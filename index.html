@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Macros</title>
+  <title>Nutrition Tracker</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -54,7 +54,11 @@
       font-size:13px;font-weight:500;cursor:pointer;background:none;color:var(--muted);
       font-family:inherit;transition:all .15s}
     .meal-tab:hover{border-color:var(--fg);color:var(--fg)}
-    .meal-tab.active{background:var(--fg);color:#fff;border-color:var(--fg)}
+    .meal-tab.active{color:#fff;border-color:transparent}
+    .meal-tab[data-meal="Ontbijt"].active{background:#f59e0b}
+    .meal-tab[data-meal="Lunch"].active{background:#10b981}
+    .meal-tab[data-meal="Diner"].active{background:#6366f1}
+    .meal-tab[data-meal="Snack"].active{background:#ec4899}
 
     .input-hint{font-size:12px;color:var(--muted);margin-bottom:8px}
     .input-row{display:flex;gap:8px;margin-bottom:22px}
@@ -154,11 +158,20 @@
 
     .log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
     .log-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
-    .meal-group{margin-bottom:18px}
+    .meal-group{margin-bottom:18px;border-radius:var(--r);overflow:hidden}
     .meal-group-hdr{display:flex;justify-content:space-between;align-items:center;
-      padding-bottom:6px;border-bottom:1.5px solid var(--border);margin-bottom:4px}
-    .meal-group-name{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
-    .meal-group-kcal{font-size:13px;font-weight:600}
+      padding:7px 11px;margin-bottom:0;border-left:3px solid transparent}
+    .meal-group-hdr[data-meal="Ontbijt"]{background:#fffbeb;border-left-color:#f59e0b}
+    .meal-group-hdr[data-meal="Lunch"]{background:#f0fdf4;border-left-color:#10b981}
+    .meal-group-hdr[data-meal="Diner"]{background:#eef2ff;border-left-color:#6366f1}
+    .meal-group-hdr[data-meal="Snack"]{background:#fdf2f8;border-left-color:#ec4899}
+    .meal-group-name{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+    .meal-group-hdr[data-meal="Ontbijt"] .meal-group-name{color:#92400e}
+    .meal-group-hdr[data-meal="Lunch"] .meal-group-name{color:#065f46}
+    .meal-group-hdr[data-meal="Diner"] .meal-group-name{color:#3730a3}
+    .meal-group-hdr[data-meal="Snack"] .meal-group-name{color:#9d174d}
+    .meal-group-kcal{font-size:13px;font-weight:600;color:var(--muted)}
+    .meal-group-items{padding:0 4px}
     .log-item{display:flex;align-items:center;padding:9px 0;
       border-bottom:1px solid var(--border);gap:10px}
     .log-info{flex:1}
@@ -255,7 +268,7 @@
 <div class="wrap">
 
   <div class="top">
-    <h1>Macros</h1>
+    <h1>Nutrition Tracker</h1>
     <div class="top-right">
       <button class="refresh-btn" id="refresh-btn" onclick="manualRefresh()" title="Vernieuwen">↻</button>
       <div class="date-nav">
@@ -371,7 +384,10 @@
       <div id="sync-connected-section" class="hidden">
         <div class="sync-field" style="margin-bottom:12px">
           <div class="sync-label">Gist ID <span style="color:var(--muted);font-weight:400">(kopieer naar je andere apparaat)</span></div>
-          <div class="gist-id-box" id="gist-id-display" onclick="copyGistId()" title="Klik om te kopiëren"></div>
+          <input class="sync-input" id="gist-id-display" readonly
+            style="cursor:text;background:#f9fafb;color:var(--fg)"
+            onclick="this.select();copyGistId()" title="Klik om te selecteren en kopiëren">
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Tik om te selecteren → lang indrukken → Kopieer</div>
         </div>
         <div class="sync-actions">
           <button class="btn-ghost btn-sm" onclick="disconnectSync()">Verbinding verwijderen</button>
@@ -447,37 +463,42 @@ function updateSyncDot(){
 async function setupSync(){
   const token=document.getElementById('sync-token').value.trim();
   const gistId=document.getElementById('sync-gist-id').value.trim();
-  if(!token){toast('Vul een token in');return;}
+  if(!token){toast('Vul een GitHub token in');return;}
   toast('Verbinden…');
   try {
     let id=gistId;
     if(!id){
-      // Create new Gist
+      // Geen Gist ID ingevuld → nieuw aanmaken
       const res=await fetch('https://api.github.com/gists',{
         method:'POST',
         headers:{'Authorization':`token ${token}`,'Content-Type':'application/json'},
         body:JSON.stringify({description:'Macros app data',public:false,
           files:{'macros-data.json':{content:JSON.stringify(state)}}})
       });
+      if(res.status===401)throw new Error('Token ongeldig — controleer of je het goed hebt overgenomen');
       if(!res.ok)throw new Error(`GitHub fout: ${res.status}`);
       const data=await res.json();
       id=data.id;
+      toast('Nieuw Gist aangemaakt ✓ — kopieer het ID naar je andere apparaat');
     } else {
-      // Validate existing Gist
+      // Gist ID ingevuld → verbinden met bestaand Gist
+      toast('Verbinden met bestaand Gist…');
       const res=await fetch(`https://api.github.com/gists/${id}`,{
         headers:{'Authorization':`token ${token}`}
       });
-      if(!res.ok)throw new Error(`Gist niet gevonden: ${res.status}`);
-      // Pull and merge
+      if(res.status===401)throw new Error('Token ongeldig — controleer of je het goed hebt overgenomen');
+      if(res.status===404)throw new Error('Gist ID niet gevonden — controleer of je het juiste ID hebt ingevoerd');
+      if(!res.ok)throw new Error(`Verbindingsfout: ${res.status}`);
+      // Pull data van bestaand Gist en samenvoegen
       const data=await res.json();
       const content=data.files?.['macros-data.json']?.content;
       if(content){mergeState(JSON.parse(content));localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
+      toast('Verbonden met bestaand Gist ✓');
     }
     setSyncCfg({token,gistId:id});
     renderSyncUI();
     render();
-    toast('Sync ingesteld ✓');
-  } catch(e){toast('Fout: '+e.message);}
+  } catch(e){toast('❌ '+e.message);}
 }
 
 async function pushToGist(){
@@ -552,7 +573,7 @@ function renderSyncUI(){
     statusText.textContent='Sync actief via GitHub Gist';
     setupSec.classList.add('hidden');
     connSec.classList.remove('hidden');
-    document.getElementById('gist-id-display').textContent=cfg.gistId;
+    document.getElementById('gist-id-display').value=cfg.gistId;
     if(dot){dot.className='sync-dot';}
   } else {
     statusBar.className='sync-status off';
@@ -637,24 +658,31 @@ function render(){
 }
 function renderMealTabs(){
   document.getElementById('meal-tabs').innerHTML=MEALS.map(m=>
-    `<button class="meal-tab${m===activeMeal?' active':''}" onclick="setMeal('${m}')">${m}</button>`).join('');
+    `<button class="meal-tab${m===activeMeal?' active':''}" data-meal="${m}" onclick="setMeal('${m}')">${m}</button>`).join('');
 }
 function renderMacros(){
   const t=getTotals(currentDate),g=state.goals;
-  const pct=(v,g)=>g>0?Math.min(v/g*100,100):0,over=(v,g)=>g>0&&v>g;
+  const rawPct=(v,gv)=>gv>0?Math.round(v/gv*100):0;
+  const barPct=(v,gv)=>Math.min(rawPct(v,gv),100);
+  const over=(v,gv)=>gv>0&&v>gv;
+  const pctTag=(v,gv)=>{const p=rawPct(v,gv);return`<span class="mg" style="font-size:12px;font-weight:600;color:${p>100?'var(--red)':p>=80?'var(--green)':'var(--muted)'}">${p}%</span>`;};
   document.getElementById('macros-grid').innerHTML=`
     <div class="mc big${over(t.kcal,g.kcal)?' over':''}">
-      <div class="ml">Calorieën</div><div class="mn"><span class="mv">${t.kcal}</span><span class="mg">/ ${g.kcal} kcal</span></div>
-      <div class="bar"><div class="bf" style="width:${pct(t.kcal,g.kcal)}%"></div></div></div>
+      <div class="ml">Calorieën</div>
+      <div class="mn"><span class="mv">${t.kcal}</span><span class="mg">/ ${g.kcal} kcal</span>${pctTag(t.kcal,g.kcal)}</div>
+      <div class="bar"><div class="bf" style="width:${barPct(t.kcal,g.kcal)}%"></div></div></div>
     <div class="mc${over(t.eiwit,g.eiwit)?' over':''}">
-      <div class="ml">Eiwit</div><div class="mn"><span class="mv">${t.eiwit}</span><span class="mg">/ ${g.eiwit}g</span></div>
-      <div class="bar"><div class="bf" style="width:${pct(t.eiwit,g.eiwit)}%"></div></div></div>
+      <div class="ml">Eiwit</div>
+      <div class="mn"><span class="mv">${t.eiwit}</span><span class="mg">/ ${g.eiwit}g</span>${pctTag(t.eiwit,g.eiwit)}</div>
+      <div class="bar"><div class="bf" style="width:${barPct(t.eiwit,g.eiwit)}%"></div></div></div>
     <div class="mc${over(t.koolhydraten,g.koolhydraten)?' over':''}">
-      <div class="ml">Koolhydraten</div><div class="mn"><span class="mv">${t.koolhydraten}</span><span class="mg">/ ${g.koolhydraten}g</span></div>
-      <div class="bar"><div class="bf" style="width:${pct(t.koolhydraten,g.koolhydraten)}%"></div></div></div>
+      <div class="ml">Koolhydraten</div>
+      <div class="mn"><span class="mv">${t.koolhydraten}</span><span class="mg">/ ${g.koolhydraten}g</span>${pctTag(t.koolhydraten,g.koolhydraten)}</div>
+      <div class="bar"><div class="bf" style="width:${barPct(t.koolhydraten,g.koolhydraten)}%"></div></div></div>
     <div class="mc${over(t.vet,g.vet)?' over':''}">
-      <div class="ml">Vetten</div><div class="mn"><span class="mv">${t.vet}</span><span class="mg">/ ${g.vet}g</span></div>
-      <div class="bar"><div class="bf" style="width:${pct(t.vet,g.vet)}%"></div></div></div>`;
+      <div class="ml">Vetten</div>
+      <div class="mn"><span class="mv">${t.vet}</span><span class="mg">/ ${g.vet}g</span>${pctTag(t.vet,g.vet)}</div>
+      <div class="bar"><div class="bf" style="width:${barPct(t.vet,g.vet)}%"></div></div></div>`;
 }
 function renderLog(){
   const log=getLog(currentDate),el=document.getElementById('log-list');
@@ -672,7 +700,7 @@ function renderLog(){
   MEALS.forEach(meal=>{
     const items=groups[meal];if(!items.length)return;
     const sub=items.reduce((a,e)=>a+e.kcal,0);
-    html+=`<div class="meal-group"><div class="meal-group-hdr"><span class="meal-group-name">${meal}</span><span class="meal-group-kcal">${sub} kcal</span></div>`;
+    html+=`<div class="meal-group"><div class="meal-group-hdr" data-meal="${meal}"><span class="meal-group-name">${meal}</span><span class="meal-group-kcal">${sub} kcal</span></div><div class="meal-group-items">`;
     items.forEach(e=>{html+=`<div class="log-item">
       <div class="log-info"><div class="log-name">${esc(e.name)}</div>
         <div class="log-sub">
@@ -684,7 +712,7 @@ function renderLog(){
         <div class="log-macros">E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g</div></div>
       <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>
     </div>`;});
-    html+='</div>';
+    html+='</div></div>';
   });
   el.innerHTML=html;
 }
