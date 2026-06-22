@@ -17,7 +17,6 @@
       padding:24px 16px 100px;font-size:15px;line-height:1.4}
     .wrap{max-width:580px;margin:0 auto}
 
-    /* TOP */
     .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
     .top h1{font-size:20px;font-weight:700;letter-spacing:-.03em}
     .top-right{display:flex;align-items:center;gap:6px}
@@ -30,10 +29,13 @@
       outline:none;padding:5px 9px;border-radius:8px;transition:border-color .15s}
     .date-input:focus{border-color:var(--accent)}
     .icon-btn{background:none;border:none;cursor:pointer;color:var(--muted);
-      font-size:19px;padding:5px;border-radius:6px;line-height:1}
+      font-size:18px;padding:5px;border-radius:6px;line-height:1;position:relative}
     .icon-btn:hover{background:var(--surface);color:var(--fg)}
+    .sync-dot{position:absolute;top:3px;right:3px;width:7px;height:7px;
+      border-radius:50%;background:var(--green);border:1.5px solid #fff}
+    .sync-dot.off{background:var(--muted)}
+    .sync-dot.err{background:var(--red)}
 
-    /* MACRO CARDS */
     .macros{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
     .mc{background:var(--surface);border-radius:var(--r);padding:13px}
     .mc.big{grid-column:1/-1;background:var(--accent-bg)}
@@ -47,7 +49,6 @@
     .bf{height:100%;border-radius:2px;background:var(--accent);transition:width .4s}
     .over .bf{background:var(--red)}
 
-    /* MEAL TABS */
     .meal-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
     .meal-tab{border:1.5px solid var(--border);border-radius:20px;padding:5px 14px;
       font-size:13px;font-weight:500;cursor:pointer;background:none;color:var(--muted);
@@ -55,17 +56,14 @@
     .meal-tab:hover{border-color:var(--fg);color:var(--fg)}
     .meal-tab.active{background:var(--fg);color:#fff;border-color:var(--fg)}
 
-    /* INPUT */
     .input-hint{font-size:12px;color:var(--muted);margin-bottom:8px}
     .input-row{display:flex;gap:8px;margin-bottom:22px}
     textarea{flex:1;border:1.5px solid var(--border);border-radius:var(--r);
       padding:11px 13px;font-family:inherit;font-size:15px;resize:none;outline:none;
-      line-height:1.5;min-height:48px;max-height:120px;overflow-y:auto;
-      transition:border-color .15s}
+      line-height:1.5;min-height:48px;max-height:120px;overflow-y:auto;transition:border-color .15s}
     textarea:focus{border-color:var(--accent)}
     textarea::placeholder{color:#bbb}
 
-    /* BUTTONS */
     button{border:none;cursor:pointer;font-family:inherit;font-size:14px;
       font-weight:500;border-radius:8px;transition:opacity .15s}
     button:disabled{opacity:.4;cursor:default}
@@ -75,8 +73,16 @@
     .btn-ghost{background:none;color:var(--muted);padding:6px 10px;font-size:13px}
     .btn-sm{padding:6px 12px;font-size:13px}
     .btn-blue{background:var(--blue);color:#fff;padding:7px 14px;font-size:13px}
+    .btn-green{background:var(--green);color:#fff;padding:7px 14px;font-size:13px}
 
-    /* PENDING */
+    /* REFRESH */
+    .refresh-btn{background:none;border:none;cursor:pointer;color:var(--muted);
+      font-size:17px;padding:5px;border-radius:6px;line-height:1;
+      transition:transform .3s,color .15s}
+    .refresh-btn:hover{color:var(--fg);background:var(--surface)}
+    .refresh-btn.spinning{animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
     .pending{margin-bottom:22px}
     .pend-item{margin-bottom:20px}
     .pend-label{font-size:13px;color:var(--muted);margin-bottom:8px;
@@ -88,14 +94,12 @@
       font-size:13px;font-weight:600;color:var(--fg);outline:none;text-align:right}
     .grams-unit{font-size:12px;color:var(--muted)}
 
-    /* MEMORY */
     .mem-card{border:1.5px solid #fed7aa;border-radius:var(--r);padding:12px 14px;
       background:var(--accent-bg);display:flex;align-items:flex-start;
       justify-content:space-between;gap:10px}
     .mem-name{font-size:14px;font-weight:600}
     .mem-sub{font-size:12px;color:var(--muted);margin-top:3px}
 
-    /* MATCH CARDS */
     .match-card{border:1.5px solid var(--border);border-radius:var(--r);
       padding:11px 13px;margin-bottom:6px;cursor:pointer;display:flex;
       align-items:center;justify-content:space-between;gap:12px;
@@ -111,35 +115,30 @@
     .match-check{font-size:17px;opacity:0;flex-shrink:0}
     .match-card.sel .match-check{opacity:1}
 
-    /* SEARCH PANEL */
     .search-panel{margin-top:8px}
-    .search-tabs{display:flex;gap:0;border:1.5px solid var(--border);border-radius:8px;
+    .search-tabs{display:flex;border:1.5px solid var(--border);border-radius:8px;
       overflow:hidden;margin-bottom:10px}
     .search-tab{flex:1;padding:7px 4px;font-size:12px;font-weight:600;background:none;
-      color:var(--muted);font-family:inherit;border:none;border-right:1.5px solid var(--border);
-      cursor:pointer;transition:all .15s}
+      color:var(--muted);font-family:inherit;border:none;
+      border-right:1.5px solid var(--border);cursor:pointer;transition:all .15s}
     .search-tab:last-child{border-right:none}
     .search-tab:hover{background:var(--surface)}
     .search-tab.active{background:var(--fg);color:#fff}
     .search-input{width:100%;border:1.5px solid var(--accent);border-radius:var(--r);
       padding:10px 13px;font-family:inherit;font-size:14px;outline:none;margin-bottom:6px}
-    .search-results{}
     .search-empty{font-size:13px;color:var(--muted);padding:8px 0}
     .search-loading{font-size:13px;color:var(--muted);padding:8px 0;
       display:flex;align-items:center;gap:6px}
     .spinner{width:14px;height:14px;border:2px solid var(--border);
       border-top-color:var(--accent);border-radius:50%;
       animation:spin .6s linear infinite;flex-shrink:0}
-    @keyframes spin{to{transform:rotate(360deg)}}
     .nevo-link{color:var(--accent);text-decoration:none;font-size:13px}
     .nevo-link:hover{text-decoration:underline}
 
-    /* MANUAL FORM */
     .manual-form{background:var(--surface);border-radius:var(--r);padding:14px;margin-top:4px}
-    .manual-form h4{font-size:13px;font-weight:600;margin-bottom:12px;color:var(--fg)}
+    .manual-form h4{font-size:13px;font-weight:600;margin-bottom:12px}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
     .form-row.full{grid-template-columns:1fr}
-    .form-field{}
     .form-label{font-size:11px;font-weight:600;text-transform:uppercase;
       letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
     .form-input{width:100%;border:1.5px solid var(--border);border-radius:7px;
@@ -151,11 +150,8 @@
     .not-found-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
     .not-found-row span{font-size:13px;color:var(--muted)}
     .pend-actions{display:flex;gap:8px;margin-top:14px}
-
-    /* DIVIDER */
     .divider{height:1px;background:var(--border);margin:20px 0}
 
-    /* LOG */
     .log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
     .log-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
     .meal-group{margin-bottom:18px}
@@ -182,20 +178,17 @@
     .log-del:hover{opacity:1;color:var(--red)}
     .log-empty{font-size:14px;color:var(--muted);padding:20px 0}
 
-    /* MODAL */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;
       align-items:center;justify-content:center;z-index:100;padding:20px}
     .overlay.hidden{display:none}
     .modal{background:#fff;border-radius:14px;padding:24px;width:100%;
-      max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.15);
-      max-height:90vh;overflow-y:auto}
-    .modal-tabs{display:flex;gap:0;border-bottom:1.5px solid var(--border);margin-bottom:20px}
+      max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto}
+    .modal-tabs{display:flex;border-bottom:1.5px solid var(--border);margin-bottom:20px}
     .modal-tab{padding:8px 16px;font-size:14px;font-weight:600;background:none;
-      color:var(--muted);font-family:inherit;border:none;border-bottom:2.5px solid transparent;
-      cursor:pointer;margin-bottom:-1.5px;transition:all .15s}
+      color:var(--muted);font-family:inherit;border:none;
+      border-bottom:2.5px solid transparent;cursor:pointer;margin-bottom:-1.5px;transition:all .15s}
     .modal-tab.active{color:var(--fg);border-bottom-color:var(--accent)}
 
-    /* GOALS */
     .mode-toggle{display:flex;background:var(--surface);border-radius:8px;
       padding:3px;margin-bottom:18px;width:fit-content}
     .mode-btn{padding:5px 14px;font-size:13px;font-weight:500;border-radius:6px;
@@ -205,24 +198,41 @@
     .goal-label{font-size:14px}
     .goal-field{display:flex;align-items:center;gap:5px}
     .goal-input{width:76px;border:1.5px solid var(--border);border-radius:7px;
-      padding:7px 10px;font-family:inherit;font-size:14px;text-align:right;outline:none;
-      transition:border-color .15s}
+      padding:7px 10px;font-family:inherit;font-size:14px;text-align:right;outline:none;transition:border-color .15s}
     .goal-input:focus{border-color:var(--accent)}
     .goal-unit{font-size:12px;color:var(--muted);min-width:28px}
-    .kcal-warning{margin-top:14px;padding:10px 13px;border-radius:8px;font-size:13px;
-      display:flex;align-items:center;gap:8px}
+    .kcal-warning{margin-top:14px;padding:10px 13px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px}
     .kcal-warning.ok{background:#f0fdf4;color:var(--green)}
     .kcal-warning.warn{background:#fef9c3;color:#854d0e}
     .kcal-warning.hidden{display:none}
+    .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
 
-    /* DATA SECTION IN MODAL */
+    /* SYNC SECTION */
+    .sync-status{display:flex;align-items:center;gap:8px;padding:10px 13px;
+      border-radius:8px;font-size:13px;margin-bottom:16px}
+    .sync-status.ok{background:#f0fdf4;color:var(--green)}
+    .sync-status.off{background:var(--surface);color:var(--muted)}
+    .sync-status.err{background:#fef2f2;color:var(--red)}
+    .sync-dot-lg{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .sync-setup{background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:16px}
+    .sync-setup h4{font-size:13px;font-weight:600;margin-bottom:4px}
+    .sync-setup p{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5}
+    .sync-field{margin-bottom:10px}
+    .sync-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+    .sync-input{width:100%;border:1.5px solid var(--border);border-radius:7px;
+      padding:8px 10px;font-family:inherit;font-size:13px;outline:none;
+      background:#fff;transition:border-color .15s;font-family:monospace}
+    .sync-input:focus{border-color:var(--accent)}
+    .sync-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .gist-id-box{background:#fff;border:1.5px solid var(--border);border-radius:7px;
+      padding:8px 10px;font-size:12px;font-family:monospace;color:var(--muted);
+      word-break:break-all;margin-top:6px;cursor:pointer}
+    .gist-id-box:hover{border-color:var(--accent);color:var(--fg)}
+
     .data-section h3{font-size:14px;font-weight:600;margin-bottom:12px}
-    .data-actions{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
-    .data-btn-row{display:flex;align-items:center;gap:10px}
-    .data-btn-desc{font-size:12px;color:var(--muted);flex:1}
+    .data-btn-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .data-desc{font-size:12px;color:var(--muted);flex:1}
 
-    /* CUSTOM PRODUCTS LIST */
-    .custom-section{margin-top:4px}
     .custom-section h3{font-size:14px;font-weight:600;margin-bottom:10px}
     .custom-item{display:flex;align-items:center;justify-content:space-between;
       padding:10px 0;border-bottom:1px solid var(--border);gap:8px}
@@ -233,9 +243,6 @@
     .custom-item-del:hover{opacity:1;color:var(--red)}
     .custom-empty{font-size:13px;color:var(--muted);padding:12px 0}
 
-    .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
-
-    /* TOAST */
     .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
       background:var(--fg);color:#fff;padding:10px 18px;border-radius:20px;
       font-size:13px;font-weight:500;z-index:200;opacity:0;
@@ -250,12 +257,15 @@
   <div class="top">
     <h1>Macros</h1>
     <div class="top-right">
+      <button class="refresh-btn" id="refresh-btn" onclick="manualRefresh()" title="Vernieuwen">↻</button>
       <div class="date-nav">
         <button class="nav-btn" onclick="shiftDay(-1)">‹</button>
         <input class="date-input" type="date" id="date-picker" onchange="setDate(this.value)">
         <button class="nav-btn" onclick="shiftDay(1)">›</button>
       </div>
-      <button class="icon-btn" onclick="openModal()" title="Instellingen">⚙︎</button>
+      <button class="icon-btn" onclick="openModal()" title="Instellingen">
+        ⚙︎<span class="sync-dot off" id="sync-dot"></span>
+      </button>
     </div>
   </div>
 
@@ -284,16 +294,15 @@
     <button class="btn-ghost btn-sm hidden" id="clear-btn" onclick="clearDay()">Wis dag</button>
   </div>
   <div id="log-list"></div>
-
 </div>
 
-<!-- Settings modal -->
+<!-- Modal -->
 <div class="overlay hidden" id="settings-modal" onclick="closeModalOutside(event)">
   <div class="modal">
     <div class="modal-tabs">
       <button class="modal-tab active" onclick="setModalTab('goals')">Doelen</button>
       <button class="modal-tab" onclick="setModalTab('custom')">Mijn producten</button>
-      <button class="modal-tab" onclick="setModalTab('data')">Data</button>
+      <button class="modal-tab" onclick="setModalTab('data')">Data & Sync</button>
     </div>
 
     <!-- DOELEN -->
@@ -302,33 +311,17 @@
         <button class="mode-btn active" id="mode-gram" onclick="setGoalMode('gram')">Grammen</button>
         <button class="mode-btn" id="mode-pct" onclick="setGoalMode('pct')">Percentages</button>
       </div>
-      <div class="goal-row">
-        <span class="goal-label">Calorieën</span>
-        <div class="goal-field">
-          <input class="goal-input" id="g-kcal" type="number" min="0" oninput="updateGoalCalc()">
-          <span class="goal-unit">kcal</span>
-        </div>
+      <div class="goal-row"><span class="goal-label">Calorieën</span>
+        <div class="goal-field"><input class="goal-input" id="g-kcal" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit">kcal</span></div>
       </div>
-      <div class="goal-row">
-        <span class="goal-label">Eiwit</span>
-        <div class="goal-field">
-          <input class="goal-input" id="g-eiwit" type="number" min="0" oninput="updateGoalCalc()">
-          <span class="goal-unit" id="unit-eiwit">g</span>
-        </div>
+      <div class="goal-row"><span class="goal-label">Eiwit</span>
+        <div class="goal-field"><input class="goal-input" id="g-eiwit" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit" id="unit-eiwit">g</span></div>
       </div>
-      <div class="goal-row">
-        <span class="goal-label">Koolhydraten</span>
-        <div class="goal-field">
-          <input class="goal-input" id="g-kh" type="number" min="0" oninput="updateGoalCalc()">
-          <span class="goal-unit" id="unit-kh">g</span>
-        </div>
+      <div class="goal-row"><span class="goal-label">Koolhydraten</span>
+        <div class="goal-field"><input class="goal-input" id="g-kh" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit" id="unit-kh">g</span></div>
       </div>
-      <div class="goal-row">
-        <span class="goal-label">Vetten</span>
-        <div class="goal-field">
-          <input class="goal-input" id="g-vet" type="number" min="0" oninput="updateGoalCalc()">
-          <span class="goal-unit" id="unit-vet">g</span>
-        </div>
+      <div class="goal-row"><span class="goal-label">Vetten</span>
+        <div class="goal-field"><input class="goal-input" id="g-vet" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit" id="unit-vet">g</span></div>
       </div>
       <div class="kcal-warning hidden" id="kcal-warning"></div>
       <div class="modal-footer">
@@ -345,28 +338,62 @@
       </div>
     </div>
 
-    <!-- DATA -->
+    <!-- DATA & SYNC -->
     <div id="tab-data" class="hidden">
-      <div class="data-section">
-        <h3>Exporteer & importeer</h3>
-        <div class="data-actions">
-          <div class="data-btn-row">
-            <button class="btn-dark btn-sm" onclick="exportData()">↓ Exporteer</button>
-            <span class="data-desc" style="font-size:12px;color:var(--muted)">Download je data als JSON — sla op in iCloud Drive voor sync naar telefoon</span>
-          </div>
-          <div class="data-btn-row">
-            <button class="btn-dark btn-sm" onclick="importData()">↑ Importeer</button>
-            <span class="data-desc" style="font-size:12px;color:var(--muted)">Laad een eerder geëxporteerd JSON-bestand in — voegt ontbrekende data toe</span>
-          </div>
+      <!-- Sync status -->
+      <div class="sync-status off" id="sync-status-bar">
+        <span class="sync-dot-lg" id="sync-dot-lg" style="background:var(--muted)"></span>
+        <span id="sync-status-text">Sync niet ingesteld</span>
+      </div>
+
+      <!-- Setup -->
+      <div class="sync-setup" id="sync-setup-section">
+        <h4>GitHub Gist sync instellen</h4>
+        <p>Sla je data op in een privé GitHub Gist zodat Mac en iPhone altijd gesynchroniseerd zijn.</p>
+        <div class="sync-field">
+          <div class="sync-label">GitHub Token</div>
+          <input class="sync-input" id="sync-token" type="password"
+            placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+            autocomplete="off" autocorrect="off" spellcheck="false">
         </div>
-        <div class="divider" style="margin:16px 0"></div>
-        <div class="data-section">
-          <h3 style="margin-bottom:8px">Gevaarlijke zone</h3>
-          <button class="btn-ghost btn-sm" style="color:var(--red)" onclick="resetAll()">Alle data wissen</button>
+        <div class="sync-field" id="gist-id-field">
+          <div class="sync-label">Gist ID <span style="font-weight:400;color:var(--muted)">(leeg laten om automatisch aan te maken)</span></div>
+          <input class="sync-input" id="sync-gist-id" type="text"
+            placeholder="Wordt automatisch aangemaakt"
+            autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="sync-actions">
+          <button class="btn-blue btn-sm" onclick="setupSync()">Verbinden</button>
         </div>
       </div>
-    </div>
 
+      <!-- Connected state -->
+      <div id="sync-connected-section" class="hidden">
+        <div class="sync-field" style="margin-bottom:12px">
+          <div class="sync-label">Gist ID <span style="color:var(--muted);font-weight:400">(kopieer naar je andere apparaat)</span></div>
+          <div class="gist-id-box" id="gist-id-display" onclick="copyGistId()" title="Klik om te kopiëren"></div>
+        </div>
+        <div class="sync-actions">
+          <button class="btn-ghost btn-sm" onclick="disconnectSync()">Verbinding verwijderen</button>
+        </div>
+        <div class="divider" style="margin:16px 0"></div>
+      </div>
+
+      <!-- Export / Import -->
+      <div class="data-section" style="margin-bottom:16px">
+        <h3>Exporteer & importeer</h3>
+        <div class="data-btn-row">
+          <button class="btn-dark btn-sm" onclick="exportData()">↓ Exporteer</button>
+          <span class="data-desc">Download als JSON — backup of handmatige sync</span>
+        </div>
+        <div class="data-btn-row">
+          <button class="btn-dark btn-sm" onclick="importData()">↑ Importeer</button>
+          <span class="data-desc">Laad een eerder geëxporteerd bestand in</span>
+        </div>
+      </div>
+      <div class="divider" style="margin:16px 0"></div>
+      <button class="btn-ghost btn-sm" style="color:var(--red)" onclick="resetAll()">Alle data wissen</button>
+    </div>
   </div>
 </div>
 
@@ -377,6 +404,7 @@ const NEVO = [{"Voedingsmiddelnaam":"Aardappelen rauw","Synoniem":"","kcal":"88"
 const MEALS = ['Ontbijt','Lunch','Diner','Snack'];
 const KCAL_PER_G = {eiwit:4.1,koolhydraten:4.1,vet:8.8};
 const STORAGE_KEY = 'macros-data';
+const SYNC_KEY = 'macros-sync';
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let state = loadState();
@@ -391,581 +419,486 @@ let offDebounce = null;
 function defaultState() {
   return {goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[]};
 }
-
 function loadState() {
-  // Try current key
   try { const s=localStorage.getItem(STORAGE_KEY); if(s) return ensureFields(JSON.parse(s)); } catch(e){}
-  // Migrate from old keys
   for (const k of ['macros-v3','macros-v2','macros-v1']) {
-    try {
-      const s = localStorage.getItem(k);
-      if (s) {
-        const old = ensureFields(JSON.parse(s));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(old));
-        localStorage.removeItem(k);
-        return old;
-      }
-    } catch(e){}
+    try { const s=localStorage.getItem(k); if(s){const d=ensureFields(JSON.parse(s));localStorage.removeItem(k);return d;} } catch(e){}
   }
   return defaultState();
 }
+function ensureFields(s){
+  if(!s.custom)s.custom=[];if(!s.memory)s.memory={};if(!s.logs)s.logs={};if(!s.goals)s.goals=defaultState().goals;return s;
+}
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));pushToGist();}
+function todayKey(){return new Date().toLocaleDateString('sv-SE');}
+function getLog(d){if(!state.logs[d])state.logs[d]=[];return state.logs[d];}
 
-function ensureFields(s) {
-  if (!s.custom) s.custom = [];
-  if (!s.memory) s.memory = {};
-  if (!s.logs) s.logs = {};
-  if (!s.goals) s.goals = defaultState().goals;
-  return s;
+// ── SYNC ─────────────────────────────────────────────────────────────────────
+function getSyncCfg(){try{const s=localStorage.getItem(SYNC_KEY);if(s)return JSON.parse(s);}catch(e){}return null;}
+function setSyncCfg(cfg){localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));}
+
+function updateSyncDot(){
+  const cfg=getSyncCfg();
+  const dot=document.getElementById('sync-dot');
+  if(!dot)return;
+  dot.className='sync-dot '+(cfg?'':'off');
 }
 
-function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function todayKey() { return new Date().toLocaleDateString('sv-SE'); }
-function getLog(d) { if (!state.logs[d]) state.logs[d]=[]; return state.logs[d]; }
+async function setupSync(){
+  const token=document.getElementById('sync-token').value.trim();
+  const gistId=document.getElementById('sync-gist-id').value.trim();
+  if(!token){toast('Vul een token in');return;}
+  toast('Verbinden…');
+  try {
+    let id=gistId;
+    if(!id){
+      // Create new Gist
+      const res=await fetch('https://api.github.com/gists',{
+        method:'POST',
+        headers:{'Authorization':`token ${token}`,'Content-Type':'application/json'},
+        body:JSON.stringify({description:'Macros app data',public:false,
+          files:{'macros-data.json':{content:JSON.stringify(state)}}})
+      });
+      if(!res.ok)throw new Error(`GitHub fout: ${res.status}`);
+      const data=await res.json();
+      id=data.id;
+    } else {
+      // Validate existing Gist
+      const res=await fetch(`https://api.github.com/gists/${id}`,{
+        headers:{'Authorization':`token ${token}`}
+      });
+      if(!res.ok)throw new Error(`Gist niet gevonden: ${res.status}`);
+      // Pull and merge
+      const data=await res.json();
+      const content=data.files?.['macros-data.json']?.content;
+      if(content){mergeState(JSON.parse(content));localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
+    }
+    setSyncCfg({token,gistId:id});
+    renderSyncUI();
+    render();
+    toast('Sync ingesteld ✓');
+  } catch(e){toast('Fout: '+e.message);}
+}
+
+async function pushToGist(){
+  const cfg=getSyncCfg(); if(!cfg)return;
+  try {
+    await fetch(`https://api.github.com/gists/${cfg.gistId}`,{
+      method:'PATCH',
+      headers:{'Authorization':`token ${cfg.token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({files:{'macros-data.json':{content:JSON.stringify(state)}}})
+    });
+  } catch(e){console.warn('Push mislukt:',e);}
+}
+
+async function pullFromGist(){
+  const cfg=getSyncCfg(); if(!cfg)return false;
+  try {
+    const res=await fetch(`https://api.github.com/gists/${cfg.gistId}`,{
+      headers:{'Authorization':`token ${cfg.token}`}
+    });
+    if(!res.ok)return false;
+    const data=await res.json();
+    const content=data.files?.['macros-data.json']?.content;
+    if(!content)return false;
+    mergeState(JSON.parse(content));
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    return true;
+  } catch(e){return false;}
+}
+
+function mergeState(remote){
+  state.goals=remote.goals||state.goals;
+  const cIds=new Set(state.custom.map(c=>c.id));
+  (remote.custom||[]).forEach(c=>{if(!cIds.has(c.id))state.custom.push(c);});
+  customFuse=null;
+  state.memory={...state.memory,...(remote.memory||{})};
+  Object.keys(remote.logs||{}).forEach(d=>{
+    if(!state.logs[d]||!state.logs[d].length)state.logs[d]=remote.logs[d];
+    else if((remote.logs[d]||[]).length>state.logs[d].length)state.logs[d]=remote.logs[d];
+  });
+}
+
+async function manualRefresh(){
+  const btn=document.getElementById('refresh-btn');
+  btn.classList.add('spinning');
+  const cfg=getSyncCfg();
+  if(!cfg){btn.classList.remove('spinning');toast('Sync niet ingesteld — ga naar ⚙︎ → Data & Sync');return;}
+  const ok=await pullFromGist();
+  btn.classList.remove('spinning');
+  if(ok){render();toast('Bijgewerkt ✓');}
+  else toast('Geen verbinding met Gist');
+}
+
+function disconnectSync(){
+  if(!confirm('Sync-verbinding verwijderen?'))return;
+  localStorage.removeItem(SYNC_KEY);
+  renderSyncUI();
+  toast('Sync verwijderd');
+}
+
+function renderSyncUI(){
+  const cfg=getSyncCfg();
+  const statusBar=document.getElementById('sync-status-bar');
+  const statusText=document.getElementById('sync-status-text');
+  const dotLg=document.getElementById('sync-dot-lg');
+  const setupSec=document.getElementById('sync-setup-section');
+  const connSec=document.getElementById('sync-connected-section');
+  const dot=document.getElementById('sync-dot');
+
+  if(cfg){
+    statusBar.className='sync-status ok';
+    dotLg.style.background='var(--green)';
+    statusText.textContent='Sync actief via GitHub Gist';
+    setupSec.classList.add('hidden');
+    connSec.classList.remove('hidden');
+    document.getElementById('gist-id-display').textContent=cfg.gistId;
+    if(dot){dot.className='sync-dot';}
+  } else {
+    statusBar.className='sync-status off';
+    dotLg.style.background='var(--muted)';
+    statusText.textContent='Sync niet ingesteld';
+    setupSec.classList.remove('hidden');
+    connSec.classList.add('hidden');
+    if(dot){dot.className='sync-dot off';}
+  }
+}
+
+function copyGistId(){
+  const cfg=getSyncCfg(); if(!cfg)return;
+  navigator.clipboard.writeText(cfg.gistId).then(()=>toast('Gist ID gekopieerd ✓'));
+}
 
 // ── SEARCH ───────────────────────────────────────────────────────────────────
-function initNevoFuse() {
-  if (!nevoFuse) nevoFuse = new Fuse(NEVO, {
-    keys:[{name:'Voedingsmiddelnaam',weight:2},{name:'Synoniem',weight:1}],
-    threshold:0.45
-  });
+function initNevoFuse(){
+  if(!nevoFuse)nevoFuse=new Fuse(NEVO,{keys:[{name:'Voedingsmiddelnaam',weight:2},{name:'Synoniem',weight:1}],threshold:0.45});
   return nevoFuse;
 }
-
-function initCustomFuse() {
-  customFuse = new Fuse(state.custom, {
-    keys:['name'], threshold:0.4
-  });
-  return customFuse;
-}
-
-function searchAll(query, limit) {
-  limit = limit || 3;
-  const customResults = (state.custom.length
-    ? initCustomFuse().search(query,{limit:2})
-    : []).map(r=>({...r.item,_type:'custom'}));
-  const nevoResults = initNevoFuse().search(query,{limit}).map(r=>({...r.item,_type:'nevo'}));
-  return [...customResults, ...nevoResults].slice(0, limit);
+function initCustomFuse(){customFuse=new Fuse(state.custom,{keys:['name'],threshold:0.4});return customFuse;}
+function searchAll(query,limit){
+  limit=limit||3;
+  const cRes=state.custom.length?initCustomFuse().search(query,{limit:2}).map(r=>({...r.item,_type:'custom'})):[];
+  const nRes=initNevoFuse().search(query,{limit}).map(r=>({...r.item,_type:'nevo'}));
+  return [...cRes,...nRes].slice(0,limit);
 }
 
 // ── PARSER ───────────────────────────────────────────────────────────────────
-function parseInput(text) {
-  text = text.trim();
-  const qRe = /([0-9]+(?:[.,][0-9]+)?)\s*(?:gram?|gr\b|ml\b|g\b)?/gi;
-  const quantities = [];
-  let m;
-  while ((m = qRe.exec(text)) !== null) {
-    quantities.push({start:m.index, end:m.index+m[0].length, grams:parseFloat(m[1].replace(',','.'))});
-  }
-  if (!quantities.length) return [];
-  const nameFirst = text.slice(0, quantities[0].start).trim().length > 0;
-  const items = [];
-  if (nameFirst) {
-    for (let i=0; i<quantities.length; i++) {
-      const q = quantities[i];
-      const prevEnd = i>0 ? quantities[i-1].end : 0;
-      const before = text.slice(prevEnd, q.start).trim().replace(/,\s*$/,'').trim();
-      if (before && q.grams>0) items.push({grams:q.grams, query:before});
+function parseInput(text){
+  text=text.trim();
+  const qRe=/([0-9]+(?:[.,][0-9]+)?)\s*(?:gram?|gr\b|ml\b|g\b)?/gi;
+  const quantities=[];let m;
+  while((m=qRe.exec(text))!==null)
+    quantities.push({start:m.index,end:m.index+m[0].length,grams:parseFloat(m[1].replace(',','.'))});
+  if(!quantities.length)return[];
+  const nameFirst=text.slice(0,quantities[0].start).trim().length>0;
+  const items=[];
+  if(nameFirst){
+    for(let i=0;i<quantities.length;i++){
+      const q=quantities[i],prevEnd=i>0?quantities[i-1].end:0;
+      const before=text.slice(prevEnd,q.start).trim().replace(/,\s*$/,'').trim();
+      if(before&&q.grams>0)items.push({grams:q.grams,query:before});
     }
-  } else {
-    for (let i=0; i<quantities.length; i++) {
-      const q = quantities[i];
-      const nextStart = i<quantities.length-1 ? quantities[i+1].start : text.length;
-      const after = text.slice(q.end, nextStart).trim().replace(/,\s*$/,'').trim();
-      if (after && q.grams>0) items.push({grams:q.grams, query:after});
+  }else{
+    for(let i=0;i<quantities.length;i++){
+      const q=quantities[i],nextStart=i<quantities.length-1?quantities[i+1].start:text.length;
+      const after=text.slice(q.end,nextStart).trim().replace(/,\s*$/,'').trim();
+      if(after&&q.grams>0)items.push({grams:q.grams,query:after});
     }
   }
   return items;
 }
 
 // ── MACROS ───────────────────────────────────────────────────────────────────
-function fv(v) { return parseFloat((v||'0').toString().replace(',','.')) || 0; }
-function r1(n) { return Math.round(n*10)/10; }
-
-function calcMacros(item, grams, meal) {
-  const f = grams/100;
-  // Support both NEVO items and custom items
-  const kcal = item.kcal !== undefined ? fv(item.kcal) : 0;
-  const eiwit = item['Eiwit (g)'] !== undefined ? fv(item['Eiwit (g)']) : (item.eiwit||0);
-  const vet = item['Vet (g)'] !== undefined ? fv(item['Vet (g)']) : (item.vet||0);
-  const kh = item['Koolhydraten (g)'] !== undefined ? fv(item['Koolhydraten (g)']) : (item.koolhydraten||0);
-  return {
-    name: item.Voedingsmiddelnaam||item.name, grams, meal,
-    kcal: Math.round(kcal*f),
-    eiwit: r1(eiwit*f), vet: r1(vet*f), koolhydraten: r1(kh*f),
-    _item: item
-  };
+function fv(v){return parseFloat((v||'0').toString().replace(',','.')) || 0;}
+function r1(n){return Math.round(n*10)/10;}
+function calcMacros(item,grams,meal){
+  const f=grams/100;
+  const kcal=item.kcal!==undefined?fv(item.kcal):0;
+  const eiwit=item['Eiwit (g)']!==undefined?fv(item['Eiwit (g)']):(item.eiwit||0);
+  const vet=item['Vet (g)']!==undefined?fv(item['Vet (g)']):(item.vet||0);
+  const kh=item['Koolhydraten (g)']!==undefined?fv(item['Koolhydraten (g)']):(item.koolhydraten||0);
+  return{name:item.Voedingsmiddelnaam||item.name,grams,meal,
+    kcal:Math.round(kcal*f),eiwit:r1(eiwit*f),vet:r1(vet*f),koolhydraten:r1(kh*f),_item:item};
 }
-
-function reCalc(entry) {
-  if (!entry._item) return entry;
-  return calcMacros(entry._item, entry.grams, entry.meal);
-}
-
-function getTotals(d) {
-  return getLog(d).reduce((a,e)=>{
-    a.kcal+=e.kcal; a.eiwit=r1(a.eiwit+e.eiwit);
-    a.vet=r1(a.vet+e.vet); a.koolhydraten=r1(a.koolhydraten+e.koolhydraten);
-    return a;
-  },{kcal:0,eiwit:0,vet:0,koolhydraten:0});
-}
+function reCalc(entry){return entry._item?calcMacros(entry._item,entry.grams,entry.meal):entry;}
+function getTotals(d){return getLog(d).reduce((a,e)=>{
+  a.kcal+=e.kcal;a.eiwit=r1(a.eiwit+e.eiwit);a.vet=r1(a.vet+e.vet);a.koolhydraten=r1(a.koolhydraten+e.koolhydraten);return a;
+},{kcal:0,eiwit:0,vet:0,koolhydraten:0});}
 
 // ── MEMORY ───────────────────────────────────────────────────────────────────
-function mk(q) { return q.toLowerCase().trim(); }
-function remember(query, item) { state.memory[mk(query)] = item; }
-function recall(query) { return state.memory[mk(query)] || null; }
+function mk(q){return q.toLowerCase().trim();}
+function remember(query,item){state.memory[mk(query)]=item;}
+function recall(query){return state.memory[mk(query)]||null;}
 
 // ── RENDER ───────────────────────────────────────────────────────────────────
-function render() {
-  document.getElementById('date-picker').value = currentDate;
-  renderMealTabs(); renderMacros(); renderLog();
+function render(){
+  document.getElementById('date-picker').value=currentDate;
+  renderMealTabs();renderMacros();renderLog();updateSyncDot();
 }
-
-function renderMealTabs() {
-  document.getElementById('meal-tabs').innerHTML = MEALS.map(m=>
-    `<button class="meal-tab${m===activeMeal?' active':''}" onclick="setMeal('${m}')">${m}</button>`
-  ).join('');
+function renderMealTabs(){
+  document.getElementById('meal-tabs').innerHTML=MEALS.map(m=>
+    `<button class="meal-tab${m===activeMeal?' active':''}" onclick="setMeal('${m}')">${m}</button>`).join('');
 }
-
-function renderMacros() {
-  const t=getTotals(currentDate), g=state.goals;
-  const pct=(v,g)=>g>0?Math.min(v/g*100,100):0;
-  const over=(v,g)=>g>0&&v>g;
+function renderMacros(){
+  const t=getTotals(currentDate),g=state.goals;
+  const pct=(v,g)=>g>0?Math.min(v/g*100,100):0,over=(v,g)=>g>0&&v>g;
   document.getElementById('macros-grid').innerHTML=`
     <div class="mc big${over(t.kcal,g.kcal)?' over':''}">
-      <div class="ml">Calorieën</div>
-      <div class="mn"><span class="mv">${t.kcal}</span><span class="mg">/ ${g.kcal} kcal</span></div>
-      <div class="bar"><div class="bf" style="width:${pct(t.kcal,g.kcal)}%"></div></div>
-    </div>
+      <div class="ml">Calorieën</div><div class="mn"><span class="mv">${t.kcal}</span><span class="mg">/ ${g.kcal} kcal</span></div>
+      <div class="bar"><div class="bf" style="width:${pct(t.kcal,g.kcal)}%"></div></div></div>
     <div class="mc${over(t.eiwit,g.eiwit)?' over':''}">
-      <div class="ml">Eiwit</div>
-      <div class="mn"><span class="mv">${t.eiwit}</span><span class="mg">/ ${g.eiwit}g</span></div>
-      <div class="bar"><div class="bf" style="width:${pct(t.eiwit,g.eiwit)}%"></div></div>
-    </div>
+      <div class="ml">Eiwit</div><div class="mn"><span class="mv">${t.eiwit}</span><span class="mg">/ ${g.eiwit}g</span></div>
+      <div class="bar"><div class="bf" style="width:${pct(t.eiwit,g.eiwit)}%"></div></div></div>
     <div class="mc${over(t.koolhydraten,g.koolhydraten)?' over':''}">
-      <div class="ml">Koolhydraten</div>
-      <div class="mn"><span class="mv">${t.koolhydraten}</span><span class="mg">/ ${g.koolhydraten}g</span></div>
-      <div class="bar"><div class="bf" style="width:${pct(t.koolhydraten,g.koolhydraten)}%"></div></div>
-    </div>
+      <div class="ml">Koolhydraten</div><div class="mn"><span class="mv">${t.koolhydraten}</span><span class="mg">/ ${g.koolhydraten}g</span></div>
+      <div class="bar"><div class="bf" style="width:${pct(t.koolhydraten,g.koolhydraten)}%"></div></div></div>
     <div class="mc${over(t.vet,g.vet)?' over':''}">
-      <div class="ml">Vetten</div>
-      <div class="mn"><span class="mv">${t.vet}</span><span class="mg">/ ${g.vet}g</span></div>
-      <div class="bar"><div class="bf" style="width:${pct(t.vet,g.vet)}%"></div></div>
-    </div>`;
+      <div class="ml">Vetten</div><div class="mn"><span class="mv">${t.vet}</span><span class="mg">/ ${g.vet}g</span></div>
+      <div class="bar"><div class="bf" style="width:${pct(t.vet,g.vet)}%"></div></div></div>`;
 }
-
-function renderLog() {
-  const log=getLog(currentDate), el=document.getElementById('log-list');
-  const clearBtn=document.getElementById('clear-btn'), title=document.getElementById('log-title');
+function renderLog(){
+  const log=getLog(currentDate),el=document.getElementById('log-list');
+  const cb=document.getElementById('clear-btn'),title=document.getElementById('log-title');
   const today=todayKey();
-  if (currentDate===today) title.textContent='Vandaag';
-  else if (currentDate===shiftStr(today,-1)) title.textContent='Gisteren';
-  else if (currentDate===shiftStr(today,1)) title.textContent='Morgen';
-  else {
-    const d=new Date(currentDate+'T12:00:00');
-    const s=d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});
-    title.textContent=s.charAt(0).toUpperCase()+s.slice(1);
-  }
-  if (!log.length) {
-    el.innerHTML='<div class="log-empty">Nog niets gelogd.</div>';
-    clearBtn.classList.add('hidden'); return;
-  }
-  clearBtn.classList.remove('hidden');
-  const groups={};
-  MEALS.forEach(m=>groups[m]=[]);
+  if(currentDate===today)title.textContent='Vandaag';
+  else if(currentDate===shiftStr(today,-1))title.textContent='Gisteren';
+  else if(currentDate===shiftStr(today,1))title.textContent='Morgen';
+  else{const d=new Date(currentDate+'T12:00:00'),s=d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});title.textContent=s.charAt(0).toUpperCase()+s.slice(1);}
+  if(!log.length){el.innerHTML='<div class="log-empty">Nog niets gelogd.</div>';cb.classList.add('hidden');return;}
+  cb.classList.remove('hidden');
+  const groups={};MEALS.forEach(m=>groups[m]=[]);
   log.forEach((e,i)=>(groups[e.meal]||groups['Snack']).push({...e,_i:i}));
   let html='';
   MEALS.forEach(meal=>{
-    const items=groups[meal];
-    if (!items.length) return;
+    const items=groups[meal];if(!items.length)return;
     const sub=items.reduce((a,e)=>a+e.kcal,0);
-    html+=`<div class="meal-group">
-      <div class="meal-group-hdr">
-        <span class="meal-group-name">${meal}</span>
-        <span class="meal-group-kcal">${sub} kcal</span>
-      </div>`;
-    items.forEach(e=>{
-      html+=`<div class="log-item">
-        <div class="log-info">
-          <div class="log-name">${esc(e.name)}</div>
-          <div class="log-sub">
-            <button class="log-grams-btn" onclick="startEditGrams(${e._i})" id="gbtn-${e._i}">${e.grams}g</button>
-            <input class="log-grams-edit hidden" id="gedit-${e._i}" type="number" min="1" value="${e.grams}"
-              onblur="commitGrams(${e._i})" onkeydown="gramsKey(event,${e._i})">
-          </div>
-        </div>
-        <div class="log-right">
-          <div class="log-kcal">${e.kcal} kcal</div>
-          <div class="log-macros">E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g</div>
-        </div>
-        <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>
-      </div>`;
-    });
+    html+=`<div class="meal-group"><div class="meal-group-hdr"><span class="meal-group-name">${meal}</span><span class="meal-group-kcal">${sub} kcal</span></div>`;
+    items.forEach(e=>{html+=`<div class="log-item">
+      <div class="log-info"><div class="log-name">${esc(e.name)}</div>
+        <div class="log-sub">
+          <button class="log-grams-btn" onclick="startEditGrams(${e._i})" id="gbtn-${e._i}">${e.grams}g</button>
+          <input class="log-grams-edit hidden" id="gedit-${e._i}" type="number" min="1" value="${e.grams}"
+            onblur="commitGrams(${e._i})" onkeydown="gramsKey(event,${e._i})">
+        </div></div>
+      <div class="log-right"><div class="log-kcal">${e.kcal} kcal</div>
+        <div class="log-macros">E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g</div></div>
+      <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>
+    </div>`;});
     html+='</div>';
   });
   el.innerHTML=html;
 }
-
-function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ── GRAM EDIT ────────────────────────────────────────────────────────────────
-function startEditGrams(idx) {
-  document.getElementById(`gbtn-${idx}`).classList.add('hidden');
-  const inp=document.getElementById(`gedit-${idx}`);
-  inp.classList.remove('hidden'); inp.focus(); inp.select();
+function startEditGrams(idx){document.getElementById(`gbtn-${idx}`).classList.add('hidden');const i=document.getElementById(`gedit-${idx}`);i.classList.remove('hidden');i.focus();i.select();}
+function commitGrams(idx){
+  const inp=document.getElementById(`gedit-${idx}`);if(!inp)return;
+  const g=parseFloat(inp.value);if(!g||g<=0){cancelEditGrams(idx);return;}
+  const log=getLog(currentDate);if(!log[idx])return;
+  log[idx].grams=g;log[idx]=reCalc(log[idx]);save();render();toast('Hoeveelheid bijgewerkt ✓');
 }
-function commitGrams(idx) {
-  const inp=document.getElementById(`gedit-${idx}`); if(!inp)return;
-  const g=parseFloat(inp.value);
-  if (!g||g<=0){cancelEditGrams(idx);return;}
-  const log=getLog(currentDate); if(!log[idx])return;
-  log[idx].grams=g; log[idx]=reCalc(log[idx]);
-  save(); render(); toast('Hoeveelheid bijgewerkt ✓');
+function cancelEditGrams(idx){
+  const b=document.getElementById(`gbtn-${idx}`),i=document.getElementById(`gedit-${idx}`);
+  if(b)b.classList.remove('hidden');if(i)i.classList.add('hidden');
 }
-function cancelEditGrams(idx) {
-  const btn=document.getElementById(`gbtn-${idx}`);
-  const inp=document.getElementById(`gedit-${idx}`);
-  if(btn)btn.classList.remove('hidden'); if(inp)inp.classList.add('hidden');
-}
-function gramsKey(e,idx){
-  if(e.key==='Enter'){e.preventDefault();commitGrams(idx);}
-  if(e.key==='Escape'){e.preventDefault();cancelEditGrams(idx);}
-}
+function gramsKey(e,idx){if(e.key==='Enter'){e.preventDefault();commitGrams(idx);}if(e.key==='Escape'){e.preventDefault();cancelEditGrams(idx);}}
 
 // ── PENDING ──────────────────────────────────────────────────────────────────
-function renderPending() {
-  const sec=document.getElementById('pending-section');
-  const cont=document.getElementById('pending-items');
+function renderPending(){
+  const sec=document.getElementById('pending-section'),cont=document.getElementById('pending-items');
   if(!pending.length){sec.classList.add('hidden');return;}
   sec.classList.remove('hidden');
-
-  cont.innerHTML = pending.map((item,pi)=>{
-    const gramsField=`<span class="grams-field">
-      <input class="grams-inp" id="pg-${pi}" type="number" min="1" value="${item.grams}"
-        oninput="updPendGrams(${pi},this.value)">
-      <span class="grams-unit">g</span>
-    </span>`;
+  cont.innerHTML=pending.map((item,pi)=>{
+    const gf=`<span class="grams-field"><input class="grams-inp" id="pg-${pi}" type="number" min="1" value="${item.grams}" oninput="updPG(${pi},this.value)"><span class="grams-unit">g</span></span>`;
     let inner='';
-
-    if (item.mode==='memory') {
-      const mem=item.memory;
-      const p=calcMacros(mem, item.grams, activeMeal);
-      inner=`<div class="mem-card">
-        <div>
-          <div class="mem-name">${esc(mem.Voedingsmiddelnaam||mem.name)}</div>
-          <div class="mem-sub" id="msub-${pi}">${item.grams}g · ${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g</div>
-        </div>
-        <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'matches')">Iets anders</button>
-      </div>`;
-    } else if (item.mode==='search') {
-      inner = renderSearchPanel(item, pi);
+    if(item.mode==='memory'){
+      const mem=item.memory,p=calcMacros(mem,item.grams,activeMeal);
+      inner=`<div class="mem-card"><div><div class="mem-name">${esc(mem.Voedingsmiddelnaam||mem.name)}</div>
+        <div class="mem-sub" id="msub-${pi}">${item.grams}g · ${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g</div></div>
+        <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'matches')">Iets anders</button></div>`;
+    } else if(item.mode==='search'){
+      inner=renderSearchPanel(item,pi);
     } else {
       const matches=item.matches||[];
-      if (!matches.length) {
-        inner=`<div class="search-empty">Geen resultaten.</div>
-          <div class="not-found-row">
-            <span>Staat er niet tussen?</span>
-            <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Zoek / voeg toe</button>
-          </div>`;
-      } else {
-        inner=matches.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('');
-        inner+=`<div class="not-found-row">
-          <span>Staat er niet tussen?</span>
-          <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Zoek / voeg toe</button>
-        </div>`;
-      }
+      inner=(matches.length?matches.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')
+        :'<div class="search-empty">Geen resultaten.</div>');
+      inner+=`<div class="not-found-row"><span>Staat er niet tussen?</span>
+        <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Zoek / voeg toe</button></div>`;
     }
-
-    return `<div class="pend-item">
-      <div class="pend-label">Jij typte: <strong>${esc(item.query)}</strong> ${gramsField}</div>
-      ${inner}
-    </div>`;
+    return `<div class="pend-item"><div class="pend-label">Jij typte: <strong>${esc(item.query)}</strong> ${gf}</div>${inner}</div>`;
   }).join('<div class="divider"></div>');
 }
 
-function renderSearchPanel(item, pi) {
-  const src = item.searchSource || 'nevo';
-  let content = '';
-
-  if (src === 'nevo') {
-    const q = item.searchQuery || item.query;
-    const results = item.searchResults || [];
-    content = `<input class="search-input" type="text" placeholder="Zoek in NEVO…" value="${esc(q)}"
-      oninput="doNevoSearch(${pi},this.value)"
-      onkeydown="if(event.key==='Enter')event.preventDefault()"
-      id="si-${pi}">
-    <div class="search-results">
-      ${results.length===0 && q
-        ? `<div class="search-empty">Niets gevonden. Probeer Open Food Facts.</div>`
-        : results.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')}
-    </div>`;
-  } else if (src === 'off') {
-    const q = item.offQuery || item.query;
-    const results = item.offResults || [];
-    const loading = item.offLoading || false;
-    content = `<input class="search-input" type="text" placeholder="Naam of barcodenummer…" value="${esc(q)}"
-      oninput="doOFFSearch(${pi},this.value)"
-      onkeydown="if(event.key==='Enter')event.preventDefault()"
-      id="si-off-${pi}">
-    <div class="search-results">
-      ${loading
-        ? `<div class="search-loading"><div class="spinner"></div> Zoeken…</div>`
-        : results.length===0 && q
-          ? `<div class="search-empty">Niets gevonden. <a class="nevo-link" href="https://nevo-online.rivm.nl/" target="_blank">Open NEVO →</a></div>`
-          : results.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')}
-    </div>`;
+function renderSearchPanel(item,pi){
+  const src=item.searchSource||'nevo';let content='';
+  if(src==='nevo'){
+    const q=item.searchQuery||item.query,results=item.searchResults||[];
+    content=`<input class="search-input" type="text" placeholder="Zoek in NEVO…" value="${esc(q)}"
+      oninput="doNevoSearch(${pi},this.value)" onkeydown="if(event.key==='Enter')event.preventDefault()" id="si-${pi}">
+      <div class="search-results">${results.length===0&&q
+        ?'<div class="search-empty">Niets gevonden. Probeer Open Food Facts.</div>'
+        :results.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')}</div>`;
+  } else if(src==='off'){
+    const q=item.offQuery||item.query,results=item.offResults||[],loading=item.offLoading||false;
+    content=`<input class="search-input" type="text" placeholder="Naam of barcodenummer…" value="${esc(q)}"
+      oninput="doOFFSearch(${pi},this.value)" onkeydown="if(event.key==='Enter')event.preventDefault()" id="si-off-${pi}">
+      <div class="search-results">${loading
+        ?'<div class="search-loading"><div class="spinner"></div> Zoeken…</div>'
+        :results.length===0&&q?'<div class="search-empty">Niets gevonden.</div>'
+        :results.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')}</div>`;
   } else {
-    // Manual entry
-    content = `<div class="manual-form">
-      <h4>Voeg eigen product toe</h4>
-      <div class="form-row full"><div class="form-field">
-        <div class="form-label">Productnaam</div>
-        <input class="form-input" id="mn-${pi}" type="text" placeholder="bijv. Eiwitreep FitKing"
-          value="${esc(item.manualName||'')}">
-      </div></div>
+    content=`<div class="manual-form"><h4>Voeg eigen product toe</h4>
+      <div class="form-row full"><div class="form-field"><div class="form-label">Productnaam</div>
+        <input class="form-input" id="mn-${pi}" type="text" placeholder="bijv. Eiwitreep FitKing" value="${esc(item.manualName||'')}"></div></div>
       <div class="form-row">
-        <div class="form-field">
-          <div class="form-label">kcal per 100g</div>
-          <input class="form-input" id="mk-${pi}" type="number" min="0" value="${item.manualKcal||''}">
-        </div>
-        <div class="form-field">
-          <div class="form-label">Eiwit per 100g</div>
-          <input class="form-input" id="me-${pi}" type="number" min="0" value="${item.manualEiwit||''}">
-        </div>
+        <div class="form-field"><div class="form-label">kcal per 100g</div><input class="form-input" id="mk-${pi}" type="number" min="0" value="${item.manualKcal||''}"></div>
+        <div class="form-field"><div class="form-label">Eiwit per 100g</div><input class="form-input" id="me-${pi}" type="number" min="0" value="${item.manualEiwit||''}"></div>
       </div>
       <div class="form-row">
-        <div class="form-field">
-          <div class="form-label">Koolhydr. per 100g</div>
-          <input class="form-input" id="mh-${pi}" type="number" min="0" value="${item.manualKh||''}">
-        </div>
-        <div class="form-field">
-          <div class="form-label">Vet per 100g</div>
-          <input class="form-input" id="mv-${pi}" type="number" min="0" value="${item.manualVet||''}">
-        </div>
+        <div class="form-field"><div class="form-label">Koolhydr. per 100g</div><input class="form-input" id="mh-${pi}" type="number" min="0" value="${item.manualKh||''}"></div>
+        <div class="form-field"><div class="form-label">Vet per 100g</div><input class="form-input" id="mv-${pi}" type="number" min="0" value="${item.manualVet||''}"></div>
       </div>
-      <div class="form-actions">
-        <button class="btn-blue" onclick="addManualProduct(${pi})">Opslaan & gebruiken</button>
-      </div>
-    </div>`;
+      <div class="form-actions"><button class="btn-blue" onclick="addManualProduct(${pi})">Opslaan & gebruiken</button></div></div>`;
   }
-
   return `<div class="search-panel">
     <div class="search-tabs">
       <button class="search-tab${src==='nevo'?' active':''}" onclick="setSearchSrc(${pi},'nevo')">NEVO</button>
       <button class="search-tab${src==='off'?' active':''}" onclick="setSearchSrc(${pi},'off')">Open Food Facts</button>
       <button class="search-tab${src==='manual'?' active':''}" onclick="setSearchSrc(${pi},'manual')">Handmatig</button>
-    </div>
-    ${content}
-  </div>
-  <button class="btn-ghost btn-sm" style="margin-top:8px" onclick="switchMode(${pi},'matches')">← Terug</button>`;
+    </div>${content}</div>
+    <button class="btn-ghost btn-sm" style="margin-top:8px" onclick="switchMode(${pi},'matches')">← Terug</button>`;
 }
 
-function matchCardHtml(item, pi, mi, sel) {
-  const isCustom = item._type==='custom';
-  const kcal = isCustom ? item.kcal : fv(item.kcal);
-  const eiwit = isCustom ? item.eiwit : fv(item['Eiwit (g)']);
-  const kh = isCustom ? item.koolhydraten : fv(item['Koolhydraten (g)']);
-  const vet = isCustom ? item.vet : fv(item['Vet (g)']);
-  const name = isCustom ? item.name : item.Voedingsmiddelnaam;
-  const syn = isCustom ? (item.source==='off'?'Open Food Facts':'Eigen') : item.Synoniem;
-  const p100=`${kcal} kcal · E ${eiwit}g · KH ${kh}g · V ${vet}g per 100g`;
-  return `<div class="match-card${isCustom?' custom-card':''}${sel?' sel':''}" onclick="selectMatch(${pi},${mi})">
-    <div>
-      <div class="match-name">${esc(name)}${isCustom?`<span class="match-badge">Eigen</span>`:''}</div>
-      ${syn&&!isCustom?`<div class="match-detail">${esc(syn.slice(0,70))}</div>`:''}
-      <div class="match-detail">${p100}</div>
-    </div>
-    <span class="match-check">✓</span>
-  </div>`;
+function matchCardHtml(item,pi,mi,sel){
+  const isC=item._type==='custom'||item._type==='off';
+  const kcal=isC?item.kcal:fv(item.kcal),eiwit=isC?item.eiwit:fv(item['Eiwit (g)']);
+  const kh=isC?item.koolhydraten:fv(item['Koolhydraten (g)']),vet=isC?item.vet:fv(item['Vet (g)']);
+  const name=isC?item.name:item.Voedingsmiddelnaam;
+  const syn=!isC?item.Synoniem:'';
+  return `<div class="match-card${isC?' custom-card':''}${sel?' sel':''}" onclick="selectMatch(${pi},${mi})">
+    <div><div class="match-name">${esc(name)}${isC?'<span class="match-badge">Eigen</span>':''}</div>
+      ${syn?`<div class="match-detail">${esc(syn.slice(0,70))}</div>`:''}
+      <div class="match-detail">${kcal} kcal · E ${eiwit}g · KH ${kh}g · V ${vet}g per 100g</div></div>
+    <span class="match-check">✓</span></div>`;
 }
 
-// ── SEARCH ACTIONS ───────────────────────────────────────────────────────────
-function switchMode(pi, mode) {
-  pending[pi].mode = mode;
-  if (mode==='search') {
-    pending[pi].searchSource = 'nevo';
-    pending[pi].searchQuery = pending[pi].query;
-    pending[pi].searchResults = searchAll(pending[pi].query, 8);
-    pending[pi].selIdx = -1;
-  } else if (mode==='matches') {
-    pending[pi].selIdx = 0;
-  }
+function switchMode(pi,mode){
+  pending[pi].mode=mode;
+  if(mode==='search'){pending[pi].searchSource='nevo';pending[pi].searchQuery=pending[pi].query;pending[pi].searchResults=searchAll(pending[pi].query,8);pending[pi].selIdx=-1;}
+  else if(mode==='matches')pending[pi].selIdx=0;
   renderPending();
-  if (mode==='search') setTimeout(()=>{const e=document.getElementById(`si-${pi}`);if(e){e.focus();e.select();}},50);
+  if(mode==='search')setTimeout(()=>{const e=document.getElementById(`si-${pi}`);if(e){e.focus();e.select();}},50);
 }
-
-function setSearchSrc(pi, src) {
-  pending[pi].searchSource = src;
-  pending[pi].selIdx = -1;
-  if (src==='nevo') {
-    pending[pi].searchResults = searchAll(pending[pi].searchQuery||pending[pi].query, 8);
-  } else if (src==='off') {
-    pending[pi].offResults = [];
-    pending[pi].offQuery = pending[pi].query;
-    pending[pi].offLoading = false;
-  }
+function setSearchSrc(pi,src){
+  pending[pi].searchSource=src;pending[pi].selIdx=-1;
+  if(src==='nevo')pending[pi].searchResults=searchAll(pending[pi].searchQuery||pending[pi].query,8);
+  else if(src==='off'){pending[pi].offResults=[];pending[pi].offQuery=pending[pi].query;pending[pi].offLoading=false;}
   renderPending();
-  if (src==='off') setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.select();}},50);
+  if(src==='off')setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.select();}},50);
 }
-
-function doNevoSearch(pi, val) {
-  pending[pi].searchQuery = val;
-  pending[pi].searchResults = val.trim() ? searchAll(val, 8) : [];
-  pending[pi].selIdx = -1;
-  renderPending();
-  setTimeout(()=>{const e=document.getElementById(`si-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
+function doNevoSearch(pi,val){
+  pending[pi].searchQuery=val;pending[pi].searchResults=val.trim()?searchAll(val,8):[];pending[pi].selIdx=-1;
+  renderPending();setTimeout(()=>{const e=document.getElementById(`si-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
 }
-
-function doOFFSearch(pi, val) {
-  pending[pi].offQuery = val;
-  pending[pi].selIdx = -1;
-  clearTimeout(offDebounce);
-  if (!val.trim()) { pending[pi].offResults=[]; renderPending(); return; }
-  pending[pi].offLoading = true;
-  renderPending();
-  // Keep focus
+function doOFFSearch(pi,val){
+  pending[pi].offQuery=val;pending[pi].selIdx=-1;clearTimeout(offDebounce);
+  if(!val.trim()){pending[pi].offResults=[];renderPending();return;}
+  pending[pi].offLoading=true;renderPending();
   setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
-  offDebounce = setTimeout(()=>fetchOFF(pi, val), 600);
+  offDebounce=setTimeout(()=>fetchOFF(pi,val),600);
 }
-
-async function fetchOFF(pi, query) {
-  try {
-    let url;
-    // Detect barcode (8-14 digits)
-    if (/^\d{8,14}$/.test(query.trim())) {
-      url = `https://world.openfoodfacts.org/api/v0/product/${query.trim()}.json`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status===1 && data.product) {
-        pending[pi].offResults = [offProductToItem(data.product)].filter(Boolean);
-      } else {
-        pending[pi].offResults = [];
-      }
-    } else {
-      url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=8&fields=product_name,brands,nutriments,code`;
-      const res = await fetch(url);
-      const data = await res.json();
-      pending[pi].offResults = (data.products||[]).map(offProductToItem).filter(Boolean).slice(0,8);
+async function fetchOFF(pi,query){
+  try{
+    let url,results=[];
+    if(/^\d{8,14}$/.test(query.trim())){
+      const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${query.trim()}.json`);
+      const data=await res.json();
+      if(data.status===1&&data.product){const item=offToItem(data.product);if(item)results=[item];}
+    }else{
+      const res=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=8&fields=product_name,brands,nutriments,code`);
+      const data=await res.json();
+      results=(data.products||[]).map(offToItem).filter(Boolean).slice(0,8);
     }
-  } catch(e) {
-    pending[pi].offResults = [];
-  }
-  pending[pi].offLoading = false;
-  renderPending();
+    pending[pi].offResults=results;
+  }catch(e){pending[pi].offResults=[];}
+  pending[pi].offLoading=false;renderPending();
   setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
 }
-
-function offProductToItem(p) {
-  if (!p || !p.nutriments) return null;
-  const n = p.nutriments;
-  const kcal = n['energy-kcal_100g'] || n['energy_100g']/4.184 || 0;
-  const eiwit = n['proteins_100g'] || 0;
-  const kh = n['carbohydrates_100g'] || 0;
-  const vet = n['fat_100g'] || 0;
-  const name = [p.product_name, p.brands].filter(Boolean).join(' — ').trim();
-  if (!name || kcal===0) return null;
-  return {
-    _type:'off',
-    name, kcal:Math.round(kcal), eiwit:r1(eiwit), koolhydraten:r1(kh), vet:r1(vet),
-    Voedingsmiddelnaam:name, 'Eiwit (g)':eiwit, 'Vet (g)':vet, 'Koolhydraten (g)':kh,
-    offId: p.code||''
-  };
+function offToItem(p){
+  if(!p||!p.nutriments)return null;
+  const n=p.nutriments,kcal=n['energy-kcal_100g']||(n['energy_100g']||0)/4.184;
+  const name=[p.product_name,p.brands].filter(Boolean).join(' — ').trim();
+  if(!name||!kcal)return null;
+  return{_type:'off',name,kcal:Math.round(kcal),eiwit:r1(n['proteins_100g']||0),
+    koolhydraten:r1(n['carbohydrates_100g']||0),vet:r1(n['fat_100g']||0),
+    Voedingsmiddelnaam:name,'Eiwit (g)':n['proteins_100g']||0,'Vet (g)':n['fat_100g']||0,
+    'Koolhydraten (g)':n['carbohydrates_100g']||0,offId:p.code||''};
 }
-
-function selectMatch(pi, mi) { pending[pi].selIdx=mi; renderPending(); }
-
-function updPendGrams(pi, val) {
-  const g=parseFloat(val); if(!g||g<=0)return;
-  pending[pi].grams=g;
-  if (pending[pi].mode==='memory') {
-    const mem=pending[pi].memory;
-    const p=calcMacros(mem, g, activeMeal);
+function selectMatch(pi,mi){pending[pi].selIdx=mi;renderPending();}
+function updPG(pi,val){
+  const g=parseFloat(val);if(!g||g<=0)return;pending[pi].grams=g;
+  if(pending[pi].mode==='memory'){
+    const p=calcMacros(pending[pi].memory,g,activeMeal);
     const sub=document.getElementById(`msub-${pi}`);
-    if(sub) sub.textContent=`${g}g · ${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g`;
+    if(sub)sub.textContent=`${g}g · ${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g`;
   }
 }
 
-// ── ADD MANUAL PRODUCT ───────────────────────────────────────────────────────
-function addManualProduct(pi) {
+function addManualProduct(pi){
   const name=(document.getElementById(`mn-${pi}`)||{}).value?.trim();
   const kcal=parseFloat((document.getElementById(`mk-${pi}`)||{}).value)||0;
   const eiwit=parseFloat((document.getElementById(`me-${pi}`)||{}).value)||0;
   const kh=parseFloat((document.getElementById(`mh-${pi}`)||{}).value)||0;
   const vet=parseFloat((document.getElementById(`mv-${pi}`)||{}).value)||0;
-  if (!name){toast('Vul een productnaam in');return;}
-  if (!kcal){toast('Vul minimaal de kcal in');return;}
-  const custom = {
-    id: Date.now(), name, kcal, eiwit, koolhydraten:kh, vet,
-    Voedingsmiddelnaam:name, 'Eiwit (g)':eiwit, 'Vet (g)':vet, 'Koolhydraten (g)':kh,
-    _type:'custom', source:'manual'
-  };
-  state.custom.push(custom);
-  customFuse = null; // reset fuse
-  // Set as selected in pending
-  pending[pi].mode = 'matches';
-  pending[pi].matches = [custom];
-  pending[pi].selIdx = 0;
-  save();
-  renderPending();
-  toast(`'${name}' opgeslagen ✓`);
+  if(!name){toast('Vul een productnaam in');return;}
+  if(!kcal){toast('Vul minimaal de kcal in');return;}
+  const custom={id:Date.now(),name,kcal,eiwit,koolhydraten:kh,vet,
+    Voedingsmiddelnaam:name,'Eiwit (g)':eiwit,'Vet (g)':vet,'Koolhydraten (g)':kh,
+    _type:'custom',source:'manual'};
+  state.custom.push(custom);customFuse=null;
+  pending[pi].mode='matches';pending[pi].matches=[custom];pending[pi].selIdx=0;
+  save();renderPending();toast(`'${name}' opgeslagen ✓`);
 }
 
-// ── CONFIRM / CANCEL ─────────────────────────────────────────────────────────
-function handleAdd() {
-  const inp=document.getElementById('food-input');
-  const text=inp.value.trim(); if(!text)return;
+// ── ACTIONS ──────────────────────────────────────────────────────────────────
+function handleAdd(){
+  const inp=document.getElementById('food-input'),text=inp.value.trim();if(!text)return;
   const parsed=parseInput(text);
-  if (!parsed.length){toast('Geen hoeveelheid herkend. Bijv: 35g havermout');return;}
-
-  pending = parsed.map(item=>{
+  if(!parsed.length){toast('Geen hoeveelheid herkend. Bijv: 35g havermout');return;}
+  pending=parsed.map(item=>{
     const mem=recall(item.query);
-    if (mem) return {...item,mode:'memory',memory:mem,matches:[],selIdx:-1,searchResults:[]};
-    const matches=searchAll(item.query);
-    return {...item,mode:'matches',memory:null,matches,selIdx:0,searchResults:[]};
+    if(mem)return{...item,mode:'memory',memory:mem,matches:[],selIdx:-1,searchResults:[]};
+    return{...item,mode:'matches',memory:null,matches:searchAll(item.query),selIdx:0,searchResults:[]};
   });
-
-  inp.value=''; inp.style.height='';
-  renderPending();
+  inp.value='';inp.style.height='';renderPending();
   document.getElementById('pending-section').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-
 function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleAdd();}}
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
 
-function confirmAll() {
-  // Sync grams from inputs
-  pending.forEach((item,pi)=>{
-    const inp=document.getElementById(`pg-${pi}`);
-    if(inp){const g=parseFloat(inp.value);if(g>0)item.grams=g;}
-  });
-  const log=getLog(currentDate);
-  let added=0;
-  for (const item of pending) {
+function confirmAll(){
+  pending.forEach((item,pi)=>{const inp=document.getElementById(`pg-${pi}`);if(inp){const g=parseFloat(inp.value);if(g>0)item.grams=g;}});
+  const log=getLog(currentDate);let added=0;
+  for(const item of pending){
     let nevoItem=null;
-    if (item.mode==='memory') nevoItem=item.memory;
-    else if (item.mode==='matches'&&item.selIdx>=0) nevoItem=item.matches[item.selIdx];
-    else if (item.mode==='search') {
+    if(item.mode==='memory')nevoItem=item.memory;
+    else if(item.mode==='matches'&&item.selIdx>=0)nevoItem=item.matches[item.selIdx];
+    else if(item.mode==='search'){
       const src=item.searchSource;
-      if (src==='nevo'&&item.selIdx>=0) nevoItem=item.searchResults[item.selIdx];
-      else if (src==='off'&&item.selIdx>=0) {
+      if(src==='nevo'&&item.selIdx>=0)nevoItem=item.searchResults[item.selIdx];
+      else if(src==='off'&&item.selIdx>=0){
         nevoItem=item.offResults[item.selIdx];
-        // Save OFF result to custom list if not already there
-        if (nevoItem&&!state.custom.find(c=>c.offId===nevoItem.offId)) {
-          state.custom.push({...nevoItem,_type:'custom',source:'off',id:Date.now()});
-          customFuse=null;
+        if(nevoItem&&!state.custom.find(c=>c.offId===nevoItem.offId)){
+          state.custom.push({...nevoItem,_type:'custom',source:'off',id:Date.now()});customFuse=null;
         }
       }
     }
-    if (nevoItem) {
-      log.push(calcMacros(nevoItem, item.grams, activeMeal));
-      remember(item.query, nevoItem);
-      added++;
-    }
+    if(nevoItem){log.push(calcMacros(nevoItem,item.grams,activeMeal));remember(item.query,nevoItem);added++;}
   }
-  pending=[];
-  save(); render(); renderPending();
-  if(added) toast(`${added} item${added>1?'s':''} toegevoegd ✓`);
+  pending=[];save();render();renderPending();
+  if(added)toast(`${added} item${added>1?'s':''} toegevoegd ✓`);
 }
-
 function cancelPending(){pending=[];renderPending();}
 function deleteEntry(idx){getLog(currentDate).splice(idx,1);save();render();}
 function clearDay(){if(!confirm('Wis alle items van deze dag?'))return;state.logs[currentDate]=[];save();render();}
@@ -977,56 +910,27 @@ function setDate(v){if(v){currentDate=v;pending=[];renderPending();render();}}
 function setMeal(m){activeMeal=m;renderMealTabs();}
 
 // ── MODAL ────────────────────────────────────────────────────────────────────
-function openModal() {
-  goalMode='gram'; setModalTab('goals'); applyGoalMode();
+function openModal(){
+  goalMode='gram';setModalTab('goals');applyGoalMode();
   const g=state.goals;
-  document.getElementById('g-kcal').value=g.kcal;
-  document.getElementById('g-eiwit').value=g.eiwit;
-  document.getElementById('g-kh').value=g.koolhydraten;
-  document.getElementById('g-vet').value=g.vet;
-  document.getElementById('settings-modal').classList.remove('hidden');
-  updateGoalCalc();
+  document.getElementById('g-kcal').value=g.kcal;document.getElementById('g-eiwit').value=g.eiwit;
+  document.getElementById('g-kh').value=g.koolhydraten;document.getElementById('g-vet').value=g.vet;
+  document.getElementById('settings-modal').classList.remove('hidden');updateGoalCalc();
 }
 function closeModal(){document.getElementById('settings-modal').classList.add('hidden');}
 function closeModalOutside(e){if(e.target===document.getElementById('settings-modal'))closeModal();}
-
-function setModalTab(tab) {
+function setModalTab(tab){
   modalTab=tab;
-  ['goals','custom','data'].forEach(t=>{
-    document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab);
-  });
-  document.querySelectorAll('.modal-tab').forEach((btn,i)=>{
-    btn.classList.toggle('active',['goals','custom','data'][i]===tab);
-  });
-  if(tab==='custom') renderCustomList();
-}
-
-function renderCustomList() {
-  const el=document.getElementById('custom-list');
-  if (!state.custom.length) {
-    el.innerHTML='<div class="custom-empty">Nog geen eigen producten opgeslagen.</div>';
-    return;
-  }
-  el.innerHTML=state.custom.map((p,i)=>`
-    <div class="custom-item">
-      <div>
-        <div class="custom-item-name">${esc(p.name)}</div>
-        <div class="custom-item-sub">${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g per 100g</div>
-      </div>
-      <button class="custom-item-del" onclick="deleteCustom(${i})">✕</button>
-    </div>`).join('');
-}
-
-function deleteCustom(i) {
-  if(!confirm(`'${state.custom[i].name}' verwijderen?`))return;
-  state.custom.splice(i,1); customFuse=null; save(); renderCustomList();
+  ['goals','custom','data'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));
+  document.querySelectorAll('.modal-tab').forEach((btn,i)=>btn.classList.toggle('active',['goals','custom','data'][i]===tab));
+  if(tab==='custom')renderCustomList();
+  if(tab==='data')renderSyncUI();
 }
 
 // ── GOALS ────────────────────────────────────────────────────────────────────
-function setGoalMode(m) {
-  const kcal=parseFloat(document.getElementById('g-kcal').value)||0;
-  const g=state.goals;
-  if (m==='pct'&&goalMode==='gram') {
+function setGoalMode(m){
+  const kcal=parseFloat(document.getElementById('g-kcal').value)||0,g=state.goals;
+  if(m==='pct'&&goalMode==='gram'){
     const eG=parseFloat(document.getElementById('g-eiwit').value)||g.eiwit;
     const khG=parseFloat(document.getElementById('g-kh').value)||g.koolhydraten;
     const vG=parseFloat(document.getElementById('g-vet').value)||g.vet;
@@ -1034,26 +938,24 @@ function setGoalMode(m) {
     document.getElementById('g-eiwit').value=Math.round(eG*KCAL_PER_G.eiwit/tot*100);
     document.getElementById('g-kh').value=Math.round(khG*KCAL_PER_G.koolhydraten/tot*100);
     document.getElementById('g-vet').value=Math.round(vG*KCAL_PER_G.vet/tot*100);
-  } else if (m==='gram'&&goalMode==='pct') {
+  }else if(m==='gram'&&goalMode==='pct'){
     const totalKcal=kcal||g.kcal||2000;
     document.getElementById('g-eiwit').value=Math.round(totalKcal*(parseFloat(document.getElementById('g-eiwit').value)||0)/100/KCAL_PER_G.eiwit);
     document.getElementById('g-kh').value=Math.round(totalKcal*(parseFloat(document.getElementById('g-kh').value)||0)/100/KCAL_PER_G.koolhydraten);
     document.getElementById('g-vet').value=Math.round(totalKcal*(parseFloat(document.getElementById('g-vet').value)||0)/100/KCAL_PER_G.vet);
   }
-  goalMode=m; applyGoalMode(); updateGoalCalc();
+  goalMode=m;applyGoalMode();updateGoalCalc();
 }
-
-function applyGoalMode() {
+function applyGoalMode(){
   document.getElementById('mode-gram').classList.toggle('active',goalMode==='gram');
   document.getElementById('mode-pct').classList.toggle('active',goalMode==='pct');
-  const unit=goalMode==='pct'?'%':'g';
-  ['eiwit','kh','vet'].forEach(id=>document.getElementById(`unit-${id}`).textContent=unit);
+  const u=goalMode==='pct'?'%':'g';
+  ['eiwit','kh','vet'].forEach(id=>document.getElementById(`unit-${id}`).textContent=u);
 }
-
-function updateGoalCalc() {
+function updateGoalCalc(){
   const kcal=parseFloat(document.getElementById('g-kcal').value)||0;
   const warn=document.getElementById('kcal-warning');
-  if (goalMode==='pct') {
+  if(goalMode==='pct'){
     const e=parseFloat(document.getElementById('g-eiwit').value)||0;
     const kh=parseFloat(document.getElementById('g-kh').value)||0;
     const v=parseFloat(document.getElementById('g-vet').value)||0;
@@ -1061,7 +963,7 @@ function updateGoalCalc() {
     if(!e&&!kh&&!v){warn.classList.add('hidden');return;}
     warn.className=sum===100?'kcal-warning ok':'kcal-warning warn';
     warn.textContent=sum===100?`✓ Percentages kloppen (${sum}%)`:`Totaal: ${sum}% (${sum>100?'+':''}${sum-100}% t.o.v. 100%)`;
-  } else {
+  }else{
     const e=parseFloat(document.getElementById('g-eiwit').value)||0;
     const kh=parseFloat(document.getElementById('g-kh').value)||0;
     const v=parseFloat(document.getElementById('g-vet').value)||0;
@@ -1069,82 +971,84 @@ function updateGoalCalc() {
     if(!kcal||!tot){warn.classList.add('hidden');return;}
     const diff=tot-kcal;
     warn.className=Math.abs(diff)<=5?'kcal-warning ok':'kcal-warning warn';
-    warn.textContent=Math.abs(diff)<=5
-      ?`✓ Macro's komen overeen (${tot} kcal)`
-      :`Macro's = ${tot} kcal, doel = ${kcal} kcal (afwijking: ${diff>0?'+':''}${diff} kcal)`;
+    warn.textContent=Math.abs(diff)<=5?`✓ Macro's komen overeen (${tot} kcal)`:`Macro's = ${tot} kcal, doel = ${kcal} kcal (afwijking: ${diff>0?'+':''}${diff} kcal)`;
   }
 }
-
-function saveGoals() {
+function saveGoals(){
   const kcal=parseInt(document.getElementById('g-kcal').value)||0;
   let eiwit,kh,vet;
-  if (goalMode==='pct') {
-    const eP=parseFloat(document.getElementById('g-eiwit').value)||0;
-    const kP=parseFloat(document.getElementById('g-kh').value)||0;
-    const vP=parseFloat(document.getElementById('g-vet').value)||0;
-    eiwit=Math.round(kcal*eP/100/KCAL_PER_G.eiwit);
-    kh=Math.round(kcal*kP/100/KCAL_PER_G.koolhydraten);
-    vet=Math.round(kcal*vP/100/KCAL_PER_G.vet);
-  } else {
+  if(goalMode==='pct'){
+    eiwit=Math.round(kcal*(parseFloat(document.getElementById('g-eiwit').value)||0)/100/KCAL_PER_G.eiwit);
+    kh=Math.round(kcal*(parseFloat(document.getElementById('g-kh').value)||0)/100/KCAL_PER_G.koolhydraten);
+    vet=Math.round(kcal*(parseFloat(document.getElementById('g-vet').value)||0)/100/KCAL_PER_G.vet);
+  }else{
     eiwit=parseInt(document.getElementById('g-eiwit').value)||0;
     kh=parseInt(document.getElementById('g-kh').value)||0;
     vet=parseInt(document.getElementById('g-vet').value)||0;
   }
-  state.goals={kcal,eiwit,koolhydraten:kh,vet};
-  save(); closeModal(); renderMacros(); toast('Doelen opgeslagen ✓');
+  state.goals={kcal,eiwit,koolhydraten:kh,vet};save();closeModal();renderMacros();toast('Doelen opgeslagen ✓');
 }
 
-// ── EXPORT / IMPORT / RESET ──────────────────────────────────────────────────
-function exportData() {
+// ── CUSTOM ───────────────────────────────────────────────────────────────────
+function renderCustomList(){
+  const el=document.getElementById('custom-list');
+  if(!state.custom.length){el.innerHTML='<div class="custom-empty">Nog geen eigen producten opgeslagen.</div>';return;}
+  el.innerHTML=state.custom.map((p,i)=>`<div class="custom-item">
+    <div><div class="custom-item-name">${esc(p.name)}</div>
+    <div class="custom-item-sub">${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g per 100g</div></div>
+    <button class="custom-item-del" onclick="deleteCustom(${i})">✕</button>
+  </div>`).join('');
+}
+function deleteCustom(i){
+  if(!confirm(`'${state.custom[i].name}' verwijderen?`))return;
+  state.custom.splice(i,1);customFuse=null;save();renderCustomList();
+}
+
+// ── EXPORT / IMPORT ──────────────────────────────────────────────────────────
+function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download=`macros-export-${todayKey()}.json`; a.click();
-  URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=`macros-export-${todayKey()}.json`;a.click();URL.revokeObjectURL(url);
   toast('Data geëxporteerd ✓');
 }
-
-function importData() {
-  const inp=document.createElement('input');
-  inp.type='file'; inp.accept='.json';
+function importData(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
   inp.onchange=e=>{
-    const file=e.target.files[0]; if(!file)return;
+    const file=e.target.files[0];if(!file)return;
     const reader=new FileReader();
     reader.onload=ev=>{
-      try {
+      try{
         const imp=JSON.parse(ev.target.result);
-        if (!imp.logs||!imp.goals){toast('Ongeldig bestand');return;}
+        if(!imp.logs||!imp.goals){toast('Ongeldig bestand');return;}
         const merged=ensureFields({...state});
         merged.goals=imp.goals;
         merged.custom=[...merged.custom,...(imp.custom||[]).filter(c=>!merged.custom.find(e=>e.id===c.id))];
         merged.memory={...merged.memory,...(imp.memory||{})};
         Object.keys(imp.logs||{}).forEach(d=>{if(!merged.logs[d])merged.logs[d]=imp.logs[d];});
-        state=merged; customFuse=null;
-        save(); render();
-        toast('Data geïmporteerd ✓');
-      } catch(e){toast('Fout bij importeren');}
-    };
-    reader.readAsText(file);
-  };
-  inp.click();
+        state=merged;customFuse=null;save();render();toast('Data geïmporteerd ✓');
+      }catch(e){toast('Fout bij importeren');}
+    };reader.readAsText(file);
+  };inp.click();
 }
-
-function resetAll() {
-  if (!confirm('Weet je zeker dat je ALLE data wilt wissen? Dit kan niet ongedaan worden gemaakt.'))return;
-  state=defaultState(); save(); render(); closeModal(); toast('Data gewist');
+function resetAll(){
+  if(!confirm('Weet je zeker dat je ALLE data wilt wissen? Dit kan niet ongedaan worden gemaakt.'))return;
+  state=defaultState();save();render();closeModal();toast('Data gewist');
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 let toastTimer;
-function toast(msg){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2400);
-}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2400);}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 initNevoFuse();
 render();
+// Auto-pull on load if sync is configured
+(async()=>{
+  if(getSyncCfg()){
+    const ok=await pullFromGist();
+    if(ok)render();
+  }
+})();
 </script>
 </body>
 </html>
