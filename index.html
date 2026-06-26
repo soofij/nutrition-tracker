@@ -171,6 +171,8 @@
     .meal-group-hdr[data-meal="Diner"] .meal-group-name{color:#3730a3}
     .meal-group-hdr[data-meal="Snack"] .meal-group-name{color:#9d174d}
     .meal-group-kcal{font-size:13px;font-weight:600;color:var(--muted)}
+    .btn-copy-meal{background:none;border:none;cursor:pointer;font-size:15px;opacity:.45;padding:0 0 0 6px;line-height:1;transition:opacity .15s}
+    .btn-copy-meal:hover{opacity:.85}
     .meal-group-items{padding:0 4px}
     .log-item{display:flex;align-items:center;padding:9px 0;
       border-bottom:1px solid var(--border);gap:10px}
@@ -603,9 +605,68 @@ function searchAll(query,limit){
   return [...cRes,...nRes].slice(0,limit);
 }
 
+// ── PORTIE-EENHEDEN ──────────────────────────────────────────────────────────
+// Ingebouwde eenhedentabel (naam → gram). Aliassen worden genormaliseerd.
+const UNIT_TABLE = {
+  'ei':60,'eieren':60,'egg':60,
+  'boterham':35,'snee':35,'snee brood':35,'sneetje':35,'boterhammetje':35,
+  'eetlepel':15,'el':15,'tbsp':15,
+  'theelepel':5,'tl':5,'tsp':5,
+  'stuk':null,'stuks':null  // null = vraag eenmalig
+};
+// Zet alias om naar canonical key
+function normalizeUnit(u){
+  u=u.toLowerCase().trim();
+  // directe match
+  if(UNIT_TABLE.hasOwnProperty(u))return u;
+  // prefix match (bijv. 'eetl' → 'eetlepel')
+  for(const k of Object.keys(UNIT_TABLE))if(k.startsWith(u)&&u.length>=2)return k;
+  return null;
+}
+// Geeft grammen terug voor een eenheid + hoeveelheid, of null als onbekend
+function resolveUnit(unit,qty){
+  const key=normalizeUnit(unit);if(!key)return null;
+  const g=UNIT_TABLE[key];
+  if(g===null){
+    // Vraag eenmalig via portiegeheugen-sleutel "__unit__<key>"
+    const memKey='__unit__'+key;
+    const stored=state.memory[memKey];
+    if(stored)return stored*qty;
+    const ans=prompt(`Hoeveel gram is 1 ${key}?`);
+    const parsed=parseFloat((ans||'').replace(',','.'));
+    if(!parsed||parsed<=0)return null;
+    state.memory[memKey]=parsed;save();
+    return parsed*qty;
+  }
+  return g*qty;
+}
+
 // ── PARSER ───────────────────────────────────────────────────────────────────
 function parseInput(text){
   text=text.trim();
+  // Detecteer eenheid-invoer: "1 ei", "2el pindakaas", "0,5 tl zout"
+  // Patroon: getal + (spatie?) + eenheidwoord + (spatie) + productnaam
+  const unitRe=/^([0-9]+(?:[.,][0-9]+)?)\s*(eetlepel|theelepel|eetl(?:epel)?|el\b|tl\b|tbsp|tsp|eieren?|boterham(?:metje)?|sneetje|snee(?:\s+brood)?|stuks?|stuk)\s+(.+)$/i;
+  const um=unitRe.exec(text);
+  if(um){
+    const qty=parseFloat(um[1].replace(',','.'));
+    const unit=um[2].toLowerCase().trim();
+    const product=um[3].trim();
+    const grams=resolveUnit(unit,qty);
+    if(grams&&grams>0)return[{grams:Math.round(grams*10)/10,query:product}];
+  }
+  // Detecteer "1 ei" zonder extra productnaam (het ei zelf is het product)
+  const unitOnlyRe=/^([0-9]+(?:[.,][0-9]+)?)\s*(eetlepel|theelepel|eetl(?:epel)?|el\b|tl\b|tbsp|tsp|eieren?|boterham(?:metje)?|sneetje|snee(?:\s+brood)?|stuks?)$/i;
+  const uom=unitOnlyRe.exec(text);
+  if(uom){
+    const qty=parseFloat(uom[1].replace(',','.'));
+    const unit=uom[2].toLowerCase().trim();
+    const grams=resolveUnit(unit,qty);
+    // Voor "1 ei" is de zoekopdracht "ei"
+    const query=normalizeUnit(unit)||unit;
+    if(grams&&grams>0)return[{grams:Math.round(grams*10)/10,query}];
+  }
+  // Standaard gram-parser
   const qRe=/([0-9]+(?:[.,][0-9]+)?)\s*(?:gram?|gr\b|ml\b|g\b)?/gi;
   const quantities=[];let m;
   while((m=qRe.exec(text))!==null)
@@ -700,7 +761,7 @@ function renderLog(){
   MEALS.forEach(meal=>{
     const items=groups[meal];if(!items.length)return;
     const sub=items.reduce((a,e)=>a+e.kcal,0);
-    html+=`<div class="meal-group"><div class="meal-group-hdr" data-meal="${meal}"><span class="meal-group-name">${meal}</span><span class="meal-group-kcal">${sub} kcal</span></div><div class="meal-group-items">`;
+    html+=`<div class="meal-group"><div class="meal-group-hdr" data-meal="${meal}"><span class="meal-group-name">${meal}</span><span class="meal-group-kcal">${sub} kcal</span><button class="btn-copy-meal" onclick="copyMealFromDay('${meal}')" title="Kopieer van andere dag">⎘</button></div><div class="meal-group-items">`;
     items.forEach(e=>{html+=`<div class="log-item">
       <div class="log-info"><div class="log-name">${esc(e.name)}</div>
         <div class="log-sub">
@@ -749,10 +810,14 @@ function renderPending(){
       inner=renderSearchPanel(item,pi);
     } else {
       const matches=item.matches||[];
-      inner=(matches.length?matches.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')
-        :'<div class="search-empty">Geen resultaten.</div>');
-      inner+=`<div class="not-found-row"><span>Staat er niet tussen?</span>
-        <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Zoek / voeg toe</button></div>`;
+      if(!matches.length&&item.offLoading){
+        inner='<div class="search-loading"><div class="spinner"></div> Zoeken in Open Food Facts…</div>';
+      }else{
+        inner=(matches.length?matches.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')
+          :'<div class="search-empty">Geen resultaten.</div>');
+        inner+=`<div class="not-found-row"><span>Staat er niet tussen?</span>
+          <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Zoek / voeg toe</button></div>`;
+      }
     }
     return `<div class="pend-item"><div class="pend-label">Jij typte: <strong>${esc(item.query)}</strong> ${gf}</div>${inner}</div>`;
   }).join('<div class="divider"></div>');
@@ -836,22 +901,43 @@ function doOFFSearch(pi,val){
   setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
   offDebounce=setTimeout(()=>fetchOFF(pi,val),600);
 }
-async function fetchOFF(pi,query){
+async function fetchOFF(pi,query,isAutoFallback){
   try{
-    let url,results=[];
+    let results=[];
     if(/^\d{8,14}$/.test(query.trim())){
       const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${query.trim()}.json`);
       const data=await res.json();
       if(data.status===1&&data.product){const item=offToItem(data.product);if(item)results=[item];}
     }else{
-      const res=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=8&fields=product_name,brands,nutriments,code`);
+      // Zoek eerst in Dutch locale, dan wereldwijd als weinig resultaten
+      const nlUrl=`https://nl.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=10&fields=product_name,brands,nutriments,code,lang&sort_by=unique_scans_n`;
+      const res=await fetch(nlUrl);
       const data=await res.json();
       results=(data.products||[]).map(offToItem).filter(Boolean).slice(0,8);
+      // Als Nederlands weinig oplevert, vul aan met wereldwijde zoekopdracht
+      if(results.length<3){
+        const wRes=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=10&fields=product_name,brands,nutriments,code&sort_by=unique_scans_n`);
+        const wData=await wRes.json();
+        const wResults=(wData.products||[]).map(offToItem).filter(Boolean);
+        // Voeg toe zonder duplicaten (op basis van naam)
+        const names=new Set(results.map(r=>r.name.toLowerCase()));
+        for(const r of wResults){if(!names.has(r.name.toLowerCase()))results.push(r);}
+        results=results.slice(0,8);
+      }
     }
-    pending[pi].offResults=results;
-  }catch(e){pending[pi].offResults=[];}
-  pending[pi].offLoading=false;renderPending();
-  setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
+    if(pi!==null){
+      pending[pi].offResults=results;
+      // Auto-fallback: als gevonden, toon direct; anders geen actie
+      if(isAutoFallback&&results.length>0){
+        pending[pi].mode='search';pending[pi].searchSource='off';
+        pending[pi].offQuery=query;pending[pi].selIdx=0;
+      }
+    }
+  }catch(e){if(pi!==null)pending[pi].offResults=[];}
+  if(pi!==null){
+    pending[pi].offLoading=false;renderPending();
+    if(!isAutoFallback)setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
+  }
 }
 function offToItem(p){
   if(!p||!p.nutriments)return null;
@@ -893,11 +979,18 @@ function addManualProduct(pi){
 function handleAdd(){
   const inp=document.getElementById('food-input'),text=inp.value.trim();if(!text)return;
   const parsed=parseInput(text);
-  if(!parsed.length){toast('Geen hoeveelheid herkend. Bijv: 35g havermout');return;}
-  pending=parsed.map(item=>{
+  if(!parsed.length){toast('Geen hoeveelheid herkend. Bijv: 35g havermout of 1 ei');return;}
+  pending=parsed.map((item,pi)=>{
     const mem=recall(item.query);
     if(mem)return{...item,mode:'memory',memory:mem,matches:[],selIdx:-1,searchResults:[]};
-    return{...item,mode:'matches',memory:null,matches:searchAll(item.query),selIdx:0,searchResults:[]};
+    const matches=searchAll(item.query);
+    const pend={...item,mode:'matches',memory:null,matches,selIdx:matches.length?0:-1,searchResults:[]};
+    // Auto-fallback naar OFF als NEVO niets vindt
+    if(!matches.length){
+      pend.offResults=[];pend.offLoading=true;pend.offQuery=item.query;
+      setTimeout(()=>fetchOFF(pi,item.query,true),0);
+    }
+    return pend;
   });
   inp.value='';inp.style.height='';renderPending();
   document.getElementById('pending-section').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -930,6 +1023,32 @@ function confirmAll(){
 function cancelPending(){pending=[];renderPending();}
 function deleteEntry(idx){getLog(currentDate).splice(idx,1);save();render();}
 function clearDay(){if(!confirm('Wis alle items van deze dag?'))return;state.logs[currentDate]=[];save();render();}
+
+function copyMealFromDay(meal){
+  const yesterday=shiftStr(currentDate,-1);
+  // Zoek meest recente dag met items voor deze maaltijd
+  let srcDate=null,srcLabel='';
+  const yesterdayItems=(state.logs[yesterday]||[]).filter(e=>e.meal===meal);
+  if(yesterdayItems.length){srcDate=yesterday;srcLabel='gisteren';}
+  else{
+    // Zoek de laatste dag (max 30 dagen terug) met items voor deze maaltijd
+    for(let i=2;i<=30;i++){
+      const d=shiftStr(currentDate,-i);
+      if((state.logs[d]||[]).some(e=>e.meal===meal)){srcDate=d;srcLabel=d;break;}
+    }
+  }
+  if(!srcDate){toast(`Geen eerdere ${meal} gevonden`);return;}
+  const srcItems=state.logs[srcDate].filter(e=>e.meal===meal);
+  const log=getLog(currentDate);
+  // Voeg toe, vermijd exacte duplicaten
+  let added=0;
+  for(const entry of srcItems){
+    const dup=log.some(e=>e.meal===meal&&e.name===entry.name&&e.grams===entry.grams);
+    if(!dup){log.push({...entry,meal});added++;}
+  }
+  if(!added){toast(`${meal} van ${srcLabel} staat er al in`);return;}
+  save();render();toast(`${meal} van ${srcLabel} gekopieerd (${added} item${added>1?'s':''}) ✓`);
+}
 
 // ── DATE ─────────────────────────────────────────────────────────────────────
 function shiftStr(d,n){const dt=new Date(d+'T12:00:00');dt.setDate(dt.getDate()+n);return dt.toLocaleDateString('sv-SE');}
