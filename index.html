@@ -34,7 +34,6 @@
     .sync-dot{position:absolute;top:3px;right:3px;width:7px;height:7px;
       border-radius:50%;background:var(--green);border:1.5px solid #fff}
     .sync-dot.off{background:var(--muted)}
-    .sync-dot.err{background:var(--red)}
 
     .macros{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
     .mc{background:var(--surface);border-radius:var(--r);padding:13px}
@@ -60,6 +59,13 @@
     .meal-tab[data-meal="Diner"].active{background:#6366f1}
     .meal-tab[data-meal="Snack"].active{background:#ec4899}
 
+    .fav-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px}
+    .fav-bar::-webkit-scrollbar{display:none}
+    .fav-btn{flex-shrink:0;background:var(--surface);border:1.5px solid var(--border);
+      border-radius:20px;padding:6px 13px;font-size:13px;font-weight:500;color:var(--fg);
+      font-family:inherit;white-space:nowrap;cursor:pointer;transition:border-color .15s,color .15s}
+    .fav-btn:hover{border-color:var(--accent);color:var(--accent)}
+
     .input-hint{font-size:12px;color:var(--muted);margin-bottom:8px}
     .input-row{display:flex;gap:8px;margin-bottom:22px}
     textarea{flex:1;border:1.5px solid var(--border);border-radius:var(--r);
@@ -77,7 +83,6 @@
     .btn-ghost{background:none;color:var(--muted);padding:6px 10px;font-size:13px}
     .btn-sm{padding:6px 12px;font-size:13px}
     .btn-blue{background:var(--blue);color:#fff;padding:7px 14px;font-size:13px}
-    .btn-green{background:var(--green);color:#fff;padding:7px 14px;font-size:13px}
 
     /* REFRESH */
     .refresh-btn{background:none;border:none;cursor:pointer;color:var(--muted);
@@ -136,9 +141,6 @@
     .spinner{width:14px;height:14px;border:2px solid var(--border);
       border-top-color:var(--accent);border-radius:50%;
       animation:spin .6s linear infinite;flex-shrink:0}
-    .nevo-link{color:var(--accent);text-decoration:none;font-size:13px}
-    .nevo-link:hover{text-decoration:underline}
-
     .manual-form{background:var(--surface);border-radius:var(--r);padding:14px;margin-top:4px}
     .manual-form h4{font-size:13px;font-weight:600;margin-bottom:12px}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
@@ -173,6 +175,7 @@
     .meal-group-kcal{font-size:13px;font-weight:600;color:var(--muted)}
     .btn-copy-meal{background:none;border:none;cursor:pointer;font-size:15px;opacity:.45;padding:0 0 0 6px;line-height:1;transition:opacity .15s}
     .btn-copy-meal:hover{opacity:.85}
+    .meal-group-sub{font-size:11px;color:var(--muted);padding:2px 11px 6px}
     .meal-group-items{padding:0 4px}
     .log-item{display:flex;align-items:center;padding:9px 0;
       border-bottom:1px solid var(--border);gap:10px}
@@ -188,10 +191,12 @@
     .log-right{text-align:right;flex-shrink:0}
     .log-kcal{font-size:14px;font-weight:600}
     .log-macros{font-size:12px;color:var(--muted);margin-top:1px}
+    .move-select{font-size:11px;color:var(--muted);background:var(--surface);
+      border:1.5px solid var(--border);border-radius:5px;padding:2px 3px;
+      font-family:inherit;outline:none;cursor:pointer;max-width:52px}
     .log-del{color:var(--muted);font-size:15px;padding:4px;cursor:pointer;
       background:none;border:none;border-radius:4px;opacity:.35}
     .log-del:hover{opacity:1;color:var(--red)}
-    .log-empty{font-size:14px;color:var(--muted);padding:20px 0}
 
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;
       align-items:center;justify-content:center;z-index:100;padding:20px}
@@ -227,7 +232,6 @@
       border-radius:8px;font-size:13px;margin-bottom:16px}
     .sync-status.ok{background:#f0fdf4;color:var(--green)}
     .sync-status.off{background:var(--surface);color:var(--muted)}
-    .sync-status.err{background:#fef2f2;color:var(--red)}
     .sync-dot-lg{width:9px;height:9px;border-radius:50%;flex-shrink:0}
     .sync-setup{background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:16px}
     .sync-setup h4{font-size:13px;font-weight:600;margin-bottom:4px}
@@ -239,10 +243,6 @@
       background:#fff;transition:border-color .15s;font-family:monospace}
     .sync-input:focus{border-color:var(--accent)}
     .sync-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-    .gist-id-box{background:#fff;border:1.5px solid var(--border);border-radius:7px;
-      padding:8px 10px;font-size:12px;font-family:monospace;color:var(--muted);
-      word-break:break-all;margin-top:6px;cursor:pointer}
-    .gist-id-box:hover{border-color:var(--accent);color:var(--fg)}
 
     .data-section h3{font-size:14px;font-weight:600;margin-bottom:12px}
     .data-btn-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
@@ -286,6 +286,8 @@
 
   <div class="macros" id="macros-grid"></div>
   <div class="meal-tabs" id="meal-tabs"></div>
+
+  <div class="fav-bar hidden" id="fav-bar"></div>
 
   <div class="input-hint">Bijv. <em>35g havermout melk 200ml</em> of <em>havermout 35g</em></div>
   <div class="input-row">
@@ -431,11 +433,10 @@ let pending = [];
 let currentDate = todayKey();
 let activeMeal = 'Ontbijt';
 let goalMode = 'gram';
-let modalTab = 'goals';
 let offDebounce = null;
 
 function defaultState() {
-  return {goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[]};
+  return {goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[],freq:{}};
 }
 function loadState() {
   try { const s=localStorage.getItem(STORAGE_KEY); if(s) return ensureFields(JSON.parse(s)); } catch(e){}
@@ -445,7 +446,7 @@ function loadState() {
   return defaultState();
 }
 function ensureFields(s){
-  if(!s.custom)s.custom=[];if(!s.memory)s.memory={};if(!s.logs)s.logs={};if(!s.goals)s.goals=defaultState().goals;return s;
+  if(!s.custom)s.custom=[];if(!s.memory)s.memory={};if(!s.logs)s.logs={};if(!s.goals)s.goals=defaultState().goals;if(!s.freq)s.freq={};return s;
 }
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));pushToGist();}
 function todayKey(){return new Date().toLocaleDateString('sv-SE');}
@@ -536,6 +537,10 @@ function mergeState(remote){
   (remote.custom||[]).forEach(c=>{if(!cIds.has(c.id))state.custom.push(c);});
   customFuse=null;
   state.memory={...state.memory,...(remote.memory||{})};
+  if(!state.freq)state.freq={};
+  Object.entries(remote.freq||{}).forEach(([k,v])=>{
+    if(!state.freq[k]||v.count>state.freq[k].count)state.freq[k]=v;
+  });
   Object.keys(remote.logs||{}).forEach(d=>{
     if(!state.logs[d]||!state.logs[d].length)state.logs[d]=remote.logs[d];
     else if((remote.logs[d]||[]).length>state.logs[d].length)state.logs[d]=remote.logs[d];
@@ -712,10 +717,49 @@ function mk(q){return q.toLowerCase().trim();}
 function remember(query,item){state.memory[mk(query)]=item;}
 function recall(query){return state.memory[mk(query)]||null;}
 
+// ── FAVORIETEN (frequentie) ───────────────────────────────────────────────────
+function bumpFreq(query,item,grams){
+  if(!state.freq)state.freq={};
+  const key=mk(query),f=state.freq[key];
+  state.freq[key]={count:(f?f.count:0)+1,item,lastGrams:grams,lastUsed:todayKey()};
+}
+function daysSince(dateStr){
+  if(!dateStr)return Infinity;
+  const d=new Date(dateStr+'T12:00:00'),now=new Date(todayKey()+'T12:00:00');
+  return Math.round((now-d)/86400000);
+}
+function topFavorites(n){
+  n=n||6;
+  return Object.entries(state.freq||{})
+    .filter(([,f])=>f.count>=2&&daysSince(f.lastUsed)<=30)
+    .sort((a,b)=>b[1].count-a[1].count)
+    .slice(0,n)
+    .map(([key,f])=>({...f,key}));
+}
+function renderFavBar(){
+  const bar=document.getElementById('fav-bar');if(!bar)return;
+  const favs=topFavorites();
+  if(!favs.length){bar.classList.add('hidden');bar.innerHTML='';return;}
+  bar.classList.remove('hidden');
+  bar.innerHTML=favs.map((f,fi)=>
+    `<button class="fav-btn" onclick="quickAdd(${fi})">${esc(f.item.Voedingsmiddelnaam||f.item.name)}</button>`).join('');
+  bar._favs=favs;
+}
+function quickAdd(fi){
+  const favs=document.getElementById('fav-bar')._favs||[];
+  const f=favs[fi];if(!f)return;
+  const grams=f.lastGrams||100;
+  const log=getLog(currentDate);
+  log.push(calcMacros(f.item,grams,activeMeal));
+  bumpFreq(f.key,f.item,grams);
+  save();render();
+  toast(`${f.item.Voedingsmiddelnaam||f.item.name} toegevoegd aan ${activeMeal} ✓`);
+}
+
 // ── RENDER ───────────────────────────────────────────────────────────────────
 function render(){
   document.getElementById('date-picker').value=currentDate;
-  renderMealTabs();renderMacros();renderLog();updateSyncDot();
+  renderMealTabs();renderMacros();renderLog();renderFavBar();updateSyncDot();
 }
 function renderMealTabs(){
   document.getElementById('meal-tabs').innerHTML=MEALS.map(m=>
@@ -753,15 +797,27 @@ function renderLog(){
   else if(currentDate===shiftStr(today,-1))title.textContent='Gisteren';
   else if(currentDate===shiftStr(today,1))title.textContent='Morgen';
   else{const d=new Date(currentDate+'T12:00:00'),s=d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});title.textContent=s.charAt(0).toUpperCase()+s.slice(1);}
-  if(!log.length){el.innerHTML='<div class="log-empty">Nog niets gelogd.</div>';cb.classList.add('hidden');return;}
-  cb.classList.remove('hidden');
   const groups={};MEALS.forEach(m=>groups[m]=[]);
   log.forEach((e,i)=>(groups[e.meal]||groups['Snack']).push({...e,_i:i}));
+  if(!log.length){
+    // Lege dag: toon toch alle maaltijdgroepen met kopieerknop
+    cb.classList.add('hidden');
+    el.innerHTML=MEALS.map(meal=>`
+      <div class="meal-group">
+        <div class="meal-group-hdr" data-meal="${meal}">
+          <span class="meal-group-name">${meal}</span>
+          <button class="btn-copy-meal" onclick="copyMealFromDay('${meal}')" title="Kopieer van andere dag">⎘</button>
+        </div>
+      </div>`).join('');
+    return;
+  }
+  cb.classList.remove('hidden');
   let html='';
   MEALS.forEach(meal=>{
-    const items=groups[meal];if(!items.length)return;
-    const sub=items.reduce((a,e)=>a+e.kcal,0);
-    html+=`<div class="meal-group"><div class="meal-group-hdr" data-meal="${meal}"><span class="meal-group-name">${meal}</span><span class="meal-group-kcal">${sub} kcal</span><button class="btn-copy-meal" onclick="copyMealFromDay('${meal}')" title="Kopieer van andere dag">⎘</button></div><div class="meal-group-items">`;
+    const items=groups[meal];
+    const subT=items.reduce((a,e)=>{a.kcal+=e.kcal;a.eiwit=r1(a.eiwit+e.eiwit);a.vet=r1(a.vet+e.vet);a.koolhydraten=r1(a.koolhydraten+e.koolhydraten);return a;},{kcal:0,eiwit:0,vet:0,koolhydraten:0});
+    html+=`<div class="meal-group"><div class="meal-group-hdr" data-meal="${meal}"><span class="meal-group-name">${meal}</span>${items.length?`<span class="meal-group-kcal">${subT.kcal} kcal</span>`:''}<button class="btn-copy-meal" onclick="copyMealFromDay('${meal}')" title="Kopieer van andere dag">⎘</button></div>${items.length?`<div class="meal-group-sub">E ${subT.eiwit}g · KH ${subT.koolhydraten}g · V ${subT.vet}g</div>`:''}<div class="meal-group-items">`;
+    if(!items.length){html+='</div></div>';return;}
     items.forEach(e=>{html+=`<div class="log-item">
       <div class="log-info"><div class="log-name">${esc(e.name)}</div>
         <div class="log-sub">
@@ -771,6 +827,9 @@ function renderLog(){
         </div></div>
       <div class="log-right"><div class="log-kcal">${e.kcal} kcal</div>
         <div class="log-macros">E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g</div></div>
+      <select class="move-select" title="Verplaats naar..." onchange="moveEntry(${e._i},this.value)">
+        ${MEALS.map(m=>`<option value="${m}"${m===meal?' selected':''}>${m}</option>`).join('')}
+      </select>
       <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>
     </div>`;});
     html+='</div></div>';
@@ -909,21 +968,12 @@ async function fetchOFF(pi,query,isAutoFallback){
       const data=await res.json();
       if(data.status===1&&data.product){const item=offToItem(data.product);if(item)results=[item];}
     }else{
-      // Zoek eerst in Dutch locale, dan wereldwijd als weinig resultaten
-      const nlUrl=`https://nl.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=10&fields=product_name,brands,nutriments,code,lang&sort_by=unique_scans_n`;
-      const res=await fetch(nlUrl);
+      // Gebruik v2 API — betrouwbaarder dan cgi/search.pl voor tekst-zoekopdrachten
+      const res=await fetch(`https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(query)}&page_size=12&fields=product_name,brands,nutriments,code,countries_tags&sort_by=unique_scans_n`);
       const data=await res.json();
-      results=(data.products||[]).map(offToItem).filter(Boolean).slice(0,8);
-      // Als Nederlands weinig oplevert, vul aan met wereldwijde zoekopdracht
-      if(results.length<3){
-        const wRes=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=10&fields=product_name,brands,nutriments,code&sort_by=unique_scans_n`);
-        const wData=await wRes.json();
-        const wResults=(wData.products||[]).map(offToItem).filter(Boolean);
-        // Voeg toe zonder duplicaten (op basis van naam)
-        const names=new Set(results.map(r=>r.name.toLowerCase()));
-        for(const r of wResults){if(!names.has(r.name.toLowerCase()))results.push(r);}
-        results=results.slice(0,8);
-      }
+      const all=(data.products||[]).map(offToItem).filter(Boolean);
+      // Sorteer: Nederlandse/Belgische producten eerst
+      results=all.sort((a,b)=>(b._nl?1:0)-(a._nl?1:0)).slice(0,8);
     }
     if(pi!==null){
       pending[pi].offResults=results;
@@ -944,7 +994,8 @@ function offToItem(p){
   const n=p.nutriments,kcal=n['energy-kcal_100g']||(n['energy_100g']||0)/4.184;
   const name=[p.product_name,p.brands].filter(Boolean).join(' — ').trim();
   if(!name||!kcal)return null;
-  return{_type:'off',name,kcal:Math.round(kcal),eiwit:r1(n['proteins_100g']||0),
+  const isNl=(p.countries_tags||[]).some(t=>t==='en:netherlands'||t==='en:belgium');
+  return{_type:'off',_nl:isNl,name,kcal:Math.round(kcal),eiwit:r1(n['proteins_100g']||0),
     koolhydraten:r1(n['carbohydrates_100g']||0),vet:r1(n['fat_100g']||0),
     Voedingsmiddelnaam:name,'Eiwit (g)':n['proteins_100g']||0,'Vet (g)':n['fat_100g']||0,
     'Koolhydraten (g)':n['carbohydrates_100g']||0,offId:p.code||''};
@@ -1015,13 +1066,17 @@ function confirmAll(){
         }
       }
     }
-    if(nevoItem){log.push(calcMacros(nevoItem,item.grams,activeMeal));remember(item.query,nevoItem);added++;}
+    if(nevoItem){log.push(calcMacros(nevoItem,item.grams,activeMeal));remember(item.query,nevoItem);bumpFreq(item.query,nevoItem,item.grams);added++;}
   }
   pending=[];save();render();renderPending();
   if(added)toast(`${added} item${added>1?'s':''} toegevoegd ✓`);
 }
 function cancelPending(){pending=[];renderPending();}
 function deleteEntry(idx){getLog(currentDate).splice(idx,1);save();render();}
+function moveEntry(idx,newMeal){
+  const log=getLog(currentDate);if(!log[idx]||log[idx].meal===newMeal)return;
+  log[idx].meal=newMeal;save();render();toast(`Verplaatst naar ${newMeal} ✓`);
+}
 function clearDay(){if(!confirm('Wis alle items van deze dag?'))return;state.logs[currentDate]=[];save();render();}
 
 function copyMealFromDay(meal){
@@ -1067,7 +1122,6 @@ function openModal(){
 function closeModal(){document.getElementById('settings-modal').classList.add('hidden');}
 function closeModalOutside(e){if(e.target===document.getElementById('settings-modal'))closeModal();}
 function setModalTab(tab){
-  modalTab=tab;
   ['goals','custom','data'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));
   document.querySelectorAll('.modal-tab').forEach((btn,i)=>btn.classList.toggle('active',['goals','custom','data'][i]===tab));
   if(tab==='custom')renderCustomList();
@@ -1171,6 +1225,7 @@ function importData(){
         merged.goals=imp.goals;
         merged.custom=[...merged.custom,...(imp.custom||[]).filter(c=>!merged.custom.find(e=>e.id===c.id))];
         merged.memory={...merged.memory,...(imp.memory||{})};
+        Object.entries(imp.freq||{}).forEach(([k,v])=>{if(!merged.freq[k]||v.count>merged.freq[k].count)merged.freq[k]=v;});
         Object.keys(imp.logs||{}).forEach(d=>{if(!merged.logs[d])merged.logs[d]=imp.logs[d];});
         state=merged;customFuse=null;save();render();toast('Data geïmporteerd ✓');
       }catch(e){toast('Fout bij importeren');}
