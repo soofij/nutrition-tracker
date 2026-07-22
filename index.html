@@ -192,11 +192,18 @@
     .log-kcal{font-size:14px;font-weight:600}
     .log-macros{font-size:12px;color:var(--muted);margin-top:1px}
     .move-select{font-size:11px;color:var(--muted);background:var(--surface);
-      border:1.5px solid var(--border);border-radius:5px;padding:2px 3px;
-      font-family:inherit;outline:none;cursor:pointer;max-width:52px}
+      border:1.5px solid var(--border);border-radius:5px;padding:2px 15px 2px 6px;
+      font-family:inherit;outline:none;cursor:pointer;max-width:74px;
+      appearance:none;-webkit-appearance:none;-moz-appearance:none;
+      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><path d='M1 2l3 3 3-3' stroke='%23777' stroke-width='1.3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+      background-repeat:no-repeat;background-position:right 5px center}
     .log-del{color:var(--muted);font-size:15px;padding:4px;cursor:pointer;
       background:none;border:none;border-radius:4px;opacity:.35}
     .log-del:hover{opacity:1;color:var(--red)}
+    .log-fav{color:var(--muted);font-size:15px;padding:4px 2px;cursor:pointer;
+      background:none;border:none;border-radius:4px;opacity:.4;line-height:1}
+    .log-fav:hover{opacity:1}
+    .log-fav.active{opacity:1;color:var(--accent)}
 
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;
       align-items:center;justify-content:center;z-index:100;padding:20px}
@@ -539,7 +546,9 @@ function mergeState(remote){
   state.memory={...state.memory,...(remote.memory||{})};
   if(!state.freq)state.freq={};
   Object.entries(remote.freq||{}).forEach(([k,v])=>{
-    if(!state.freq[k]||v.count>state.freq[k].count)state.freq[k]=v;
+    const cur=state.freq[k];
+    if(!cur||v.count>cur.count)state.freq[k]={...v,pinned:!!(v.pinned||(cur&&cur.pinned))};
+    else cur.pinned=!!(cur.pinned||v.pinned);
   });
   Object.keys(remote.logs||{}).forEach(d=>{
     if(!state.logs[d]||!state.logs[d].length)state.logs[d]=remote.logs[d];
@@ -628,22 +637,18 @@ function normalizeUnit(u){
   for(const k of Object.keys(UNIT_TABLE))if(k.startsWith(u)&&u.length>=2)return k;
   return null;
 }
-// Geeft grammen terug voor een eenheid + hoeveelheid, of null als onbekend
+// Geeft {grams} terug, of {needsAsk:true,key,qty} als de gram-waarde nog niet bekend is
+// (geen window.prompt — die werkt niet betrouwbaar in de iOS-homescreen-webapp)
 function resolveUnit(unit,qty){
   const key=normalizeUnit(unit);if(!key)return null;
   const g=UNIT_TABLE[key];
   if(g===null){
-    // Vraag eenmalig via portiegeheugen-sleutel "__unit__<key>"
     const memKey='__unit__'+key;
     const stored=state.memory[memKey];
-    if(stored)return stored*qty;
-    const ans=prompt(`Hoeveel gram is 1 ${key}?`);
-    const parsed=parseFloat((ans||'').replace(',','.'));
-    if(!parsed||parsed<=0)return null;
-    state.memory[memKey]=parsed;save();
-    return parsed*qty;
+    if(stored)return{grams:r1(stored*qty)};
+    return{needsAsk:true,key,qty};
   }
-  return g*qty;
+  return{grams:r1(g*qty)};
 }
 
 // ── PARSER ───────────────────────────────────────────────────────────────────
@@ -657,8 +662,11 @@ function parseInput(text){
     const qty=parseFloat(um[1].replace(',','.'));
     const unit=um[2].toLowerCase().trim();
     const product=um[3].trim();
-    const grams=resolveUnit(unit,qty);
-    if(grams&&grams>0)return[{grams:Math.round(grams*10)/10,query:product}];
+    const resolved=resolveUnit(unit,qty);
+    if(resolved){
+      if(resolved.needsAsk)return[{needsUnit:resolved.key,unitQty:resolved.qty,query:product}];
+      if(resolved.grams>0)return[{grams:resolved.grams,query:product}];
+    }
   }
   // Detecteer "1 ei" zonder extra productnaam (het ei zelf is het product)
   const unitOnlyRe=/^([0-9]+(?:[.,][0-9]+)?)\s*(eetlepel|theelepel|eetl(?:epel)?|el\b|tl\b|tbsp|tsp|eieren?|boterham(?:metje)?|sneetje|snee(?:\s+brood)?|stuks?)$/i;
@@ -666,17 +674,25 @@ function parseInput(text){
   if(uom){
     const qty=parseFloat(uom[1].replace(',','.'));
     const unit=uom[2].toLowerCase().trim();
-    const grams=resolveUnit(unit,qty);
+    const resolved=resolveUnit(unit,qty);
     // Voor "1 ei" is de zoekopdracht "ei"
     const query=normalizeUnit(unit)||unit;
-    if(grams&&grams>0)return[{grams:Math.round(grams*10)/10,query}];
+    if(resolved){
+      if(resolved.needsAsk)return[{needsUnit:resolved.key,unitQty:resolved.qty,query}];
+      if(resolved.grams>0)return[{grams:resolved.grams,query}];
+    }
   }
   // Standaard gram-parser
   const qRe=/([0-9]+(?:[.,][0-9]+)?)\s*(?:gram?|gr\b|ml\b|g\b)?/gi;
   const quantities=[];let m;
   while((m=qRe.exec(text))!==null)
     quantities.push({start:m.index,end:m.index+m[0].length,grams:parseFloat(m[1].replace(',','.'))});
-  if(!quantities.length)return[];
+  if(!quantities.length){
+    // Geen hoeveelheid getypt: zoek toch, met laatst gebruikte hoeveelheid (of 100g) als startwaarde
+    const query=text.trim();
+    if(!query)return[];
+    return[{query,grams:defaultGramsFor(query)}];
+  }
   const nameFirst=text.slice(0,quantities[0].start).trim().length>0;
   const items=[];
   if(nameFirst){
@@ -716,6 +732,11 @@ function getTotals(d){return getLog(d).reduce((a,e)=>{
 function mk(q){return q.toLowerCase().trim();}
 function remember(query,item){state.memory[mk(query)]=item;}
 function recall(query){return state.memory[mk(query)]||null;}
+// Standaard-hoeveelheid bij ontbrekende invoer: laatst gebruikte grams, anders 100g
+function defaultGramsFor(query){
+  const f=state.freq&&state.freq[mk(query)];
+  return f&&f.lastGrams?f.lastGrams:100;
+}
 
 // ── FAVORIETEN (frequentie) ───────────────────────────────────────────────────
 function bumpFreq(query,item,grams){
@@ -730,11 +751,28 @@ function daysSince(dateStr){
 }
 function topFavorites(n){
   n=n||6;
-  return Object.entries(state.freq||{})
-    .filter(([,f])=>f.count>=2&&daysSince(f.lastUsed)<=30)
+  // Zowel handmatig gepinde als automatisch-frequente favorieten vervagen na 30 dagen zonder gebruik
+  const entries=Object.entries(state.freq||{}).filter(([,f])=>daysSince(f.lastUsed)<=30);
+  const pinned=entries.filter(([,f])=>f.pinned).map(([key,f])=>({...f,key}));
+  const freqBased=entries.filter(([,f])=>!f.pinned&&f.count>=2)
     .sort((a,b)=>b[1].count-a[1].count)
-    .slice(0,n)
     .map(([key,f])=>({...f,key}));
+  return [...pinned,...freqBased].slice(0,n);
+}
+// Handmatig een favoriet vastzetten/losmaken (los van de automatische frequentie-drempel)
+function isFavorited(name){const f=state.freq[mk(name)];return!!(f&&f.pinned);}
+function toggleFavorite(idx){
+  const log=getLog(currentDate),entry=log[idx];if(!entry||!entry._item)return;
+  const key=mk(entry.name),f=state.freq[key];
+  if(f&&f.pinned){
+    f.pinned=false;
+    toast(`${entry.name} verwijderd uit favorieten`);
+  }else{
+    state.freq[key]={...(f||{count:0}),item:entry._item,pinned:true,
+      lastGrams:f?f.lastGrams:entry.grams,lastUsed:todayKey()};
+    toast(`${entry.name} toegevoegd aan favorieten ✓`);
+  }
+  save();render();
 }
 function renderFavBar(){
   const bar=document.getElementById('fav-bar');if(!bar)return;
@@ -830,6 +868,7 @@ function renderLog(){
       <select class="move-select" title="Verplaats naar..." onchange="moveEntry(${e._i},this.value)">
         ${MEALS.map(m=>`<option value="${m}"${m===meal?' selected':''}>${m}</option>`).join('')}
       </select>
+      <button class="log-fav${isFavorited(e.name)?' active':''}" onclick="toggleFavorite(${e._i})" title="${isFavorited(e.name)?'Verwijder uit favorieten':'Voeg toe aan favorieten'}">${isFavorited(e.name)?'★':'☆'}</button>
       <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>
     </div>`;});
     html+='</div></div>';
@@ -858,6 +897,16 @@ function renderPending(){
   if(!pending.length){sec.classList.add('hidden');return;}
   sec.classList.remove('hidden');
   cont.innerHTML=pending.map((item,pi)=>{
+    if(item.mode==='unit-ask'){
+      const inner=`<div class="manual-form"><h4>Hoeveel gram is 1 ${esc(item.unitKey)}?</h4>
+        <div class="form-row full"><div class="form-field">
+          <input class="form-input" id="ua-${pi}" type="number" min="1" placeholder="bijv. 90" inputmode="decimal"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();resolveUnitAsk(${pi});}">
+        </div></div>
+        <div class="form-actions"><button class="btn-blue" onclick="resolveUnitAsk(${pi})">Doorgaan</button></div>
+      </div>`;
+      return `<div class="pend-item"><div class="pend-label">Jij typte: <strong>${esc(item.query)}</strong></div>${inner}</div>`;
+    }
     const gf=`<span class="grams-field"><input class="grams-inp" id="pg-${pi}" type="number" min="1" value="${item.grams}" oninput="updPG(${pi},this.value)"><span class="grams-unit">g</span></span>`;
     let inner='';
     if(item.mode==='memory'){
@@ -975,7 +1024,7 @@ async function fetchOFF(pi,query,isAutoFallback){
       // Sorteer: Nederlandse/Belgische producten eerst
       results=all.sort((a,b)=>(b._nl?1:0)-(a._nl?1:0)).slice(0,8);
     }
-    if(pi!==null){
+    if(pi!==null&&pending[pi]){
       pending[pi].offResults=results;
       // Auto-fallback: als gevonden, toon direct; anders geen actie
       if(isAutoFallback&&results.length>0){
@@ -983,8 +1032,8 @@ async function fetchOFF(pi,query,isAutoFallback){
         pending[pi].offQuery=query;pending[pi].selIdx=0;
       }
     }
-  }catch(e){if(pi!==null)pending[pi].offResults=[];}
-  if(pi!==null){
+  }catch(e){if(pi!==null&&pending[pi])pending[pi].offResults=[];}
+  if(pi!==null&&pending[pi]){
     pending[pi].offLoading=false;renderPending();
     if(!isAutoFallback)setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
   }
@@ -1001,6 +1050,25 @@ function offToItem(p){
     'Koolhydraten (g)':n['carbohydrates_100g']||0,offId:p.code||''};
 }
 function selectMatch(pi,mi){pending[pi].selIdx=mi;renderPending();}
+function resolveUnitAsk(pi){
+  const item=pending[pi];if(!item||item.mode!=='unit-ask')return;
+  const inp=document.getElementById(`ua-${pi}`);
+  const g=parseFloat((inp.value||'').replace(',','.'));
+  if(!g||g<=0){toast('Vul een geldig aantal gram in');return;}
+  state.memory['__unit__'+item.unitKey]=g;save();
+  const grams=r1(g*(item.unitQty||1)),query=item.query;
+  const mem=recall(query);
+  if(mem){pending[pi]={...item,grams,mode:'memory',memory:mem,matches:[],selIdx:-1,searchResults:[]};}
+  else{
+    const matches=searchAll(query);
+    pending[pi]={...item,grams,mode:'matches',memory:null,matches,selIdx:matches.length?0:-1,searchResults:[]};
+    if(!matches.length){
+      pending[pi].offResults=[];pending[pi].offLoading=true;pending[pi].offQuery=query;
+      setTimeout(()=>fetchOFF(pi,query,true),0);
+    }
+  }
+  renderPending();
+}
 function updPG(pi,val){
   const g=parseFloat(val);if(!g||g<=0)return;pending[pi].grams=g;
   if(pending[pi].mode==='memory'){
@@ -1032,6 +1100,7 @@ function handleAdd(){
   const parsed=parseInput(text);
   if(!parsed.length){toast('Geen hoeveelheid herkend. Bijv: 35g havermout of 1 ei');return;}
   pending=parsed.map((item,pi)=>{
+    if(item.needsUnit)return{...item,mode:'unit-ask',unitKey:item.needsUnit};
     const mem=recall(item.query);
     if(mem)return{...item,mode:'memory',memory:mem,matches:[],selIdx:-1,searchResults:[]};
     const matches=searchAll(item.query);
@@ -1050,6 +1119,7 @@ function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handle
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
 
 function confirmAll(){
+  if(pending.some(i=>i.mode==='unit-ask')){toast('Beantwoord eerst hoeveel gram 1 stuk/eenheid is');return;}
   pending.forEach((item,pi)=>{const inp=document.getElementById(`pg-${pi}`);if(inp){const g=parseFloat(inp.value);if(g>0)item.grams=g;}});
   const log=getLog(currentDate);let added=0;
   for(const item of pending){
@@ -1225,7 +1295,11 @@ function importData(){
         merged.goals=imp.goals;
         merged.custom=[...merged.custom,...(imp.custom||[]).filter(c=>!merged.custom.find(e=>e.id===c.id))];
         merged.memory={...merged.memory,...(imp.memory||{})};
-        Object.entries(imp.freq||{}).forEach(([k,v])=>{if(!merged.freq[k]||v.count>merged.freq[k].count)merged.freq[k]=v;});
+        Object.entries(imp.freq||{}).forEach(([k,v])=>{
+          const cur=merged.freq[k];
+          if(!cur||v.count>cur.count)merged.freq[k]={...v,pinned:!!(v.pinned||(cur&&cur.pinned))};
+          else cur.pinned=!!(cur.pinned||v.pinned);
+        });
         Object.keys(imp.logs||{}).forEach(d=>{if(!merged.logs[d])merged.logs[d]=imp.logs[d];});
         state=merged;customFuse=null;save();render();toast('Data geïmporteerd ✓');
       }catch(e){toast('Fout bij importeren');}
