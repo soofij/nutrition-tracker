@@ -179,22 +179,32 @@
     .meal-group-kcal{font-size:13px;font-weight:600;color:var(--muted)}
     .btn-copy-meal{background:none;border:none;cursor:pointer;font-size:15px;opacity:.45;padding:0 0 0 6px;line-height:1;transition:opacity .15s}
     .btn-copy-meal:hover{opacity:.85}
-    .btn-sym{background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);opacity:.4;padding:0 0 0 8px;line-height:1;transition:opacity .15s,color .15s}
-    .btn-sym:hover{opacity:.85}
-    .btn-sym.active{opacity:1;color:#d97706}
-    .sym-panel{display:flex;flex-wrap:wrap;gap:5px;padding:2px 11px 8px}
-    .sym-chip{border:1.5px solid var(--border);background:#fff;border-radius:14px;padding:3px 10px;
-      font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s}
-    .sym-chip:hover{border-color:#f59e0b;color:#92400e}
-    .sym-chip.active{background:#fef3c7;border-color:#f59e0b;color:#92400e}
     .meal-group-sub{font-size:11px;color:var(--muted);padding:2px 11px 6px}
-    .macro-badge{display:inline-block;border-radius:9px;padding:1px 6px;font-weight:700;
-      font-size:11px;color:#fff;letter-spacing:.01em}
-    .macro-badge.e{background:var(--blue)}
-    .macro-badge.kh{background:var(--accent)}
-    .macro-badge.v{background:#8b5cf6}
-    .macro-badge.total{font-size:12px;font-weight:800;padding:2px 7px}
+    .macro-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:3px;vertical-align:middle}
+    .macro-dot.total{width:7px;height:7px}
+    .macro-val{font-size:11.5px;color:var(--muted);margin-right:7px}
+    .macro-val:last-child{margin-right:0}
+    .macro-val.total{font-size:12.5px;font-weight:700;color:var(--fg)}
     .meal-group-items{padding:0 4px}
+    /* Dagnotitie (FODMAP-klachten, vrije tekst per dag) */
+    .day-note{margin-top:20px}
+    .day-note textarea{width:100%;border:1.5px solid var(--border);border-radius:var(--r);
+      padding:10px 12px;font-family:inherit;font-size:13px;color:var(--fg);resize:none;outline:none;
+      line-height:1.5;transition:border-color .15s}
+    .day-note textarea:focus{border-color:var(--accent)}
+    .day-note textarea::placeholder{color:#bbb}
+    .note-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:middle}
+    /* Selecteren om items achteraf tot een recept te maken */
+    .select-check{margin-right:2px}
+    .select-bar{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap}
+    .select-bar .form-input{flex:1;min-width:140px}
+    /* Recepten */
+    .recipe-toggle{background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;
+      padding:0 4px 0 0;line-height:1;transition:transform .15s}
+    .recipe-toggle.open{transform:rotate(90deg)}
+    .recipe-ingredients{padding:2px 0 6px 20px}
+    .recipe-ingredient-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:2px 0}
+    .recipe-badge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:10px;background:var(--blue-bg);color:var(--blue);margin-left:6px;vertical-align:middle}
     .log-item{display:flex;align-items:center;padding:9px 0;
       border-bottom:1px solid var(--border);gap:10px}
     .log-info{flex:1}
@@ -330,12 +340,26 @@
     </div>
   </div>
 
+  <div class="fav-bar hidden" id="recipe-bar"></div>
+
   <div class="divider"></div>
   <div class="log-header">
-    <span class="log-title" id="log-title">Vandaag</span>
-    <button class="btn-ghost btn-sm hidden" id="clear-btn" onclick="clearDay()">Wis dag</button>
+    <span class="log-title" id="log-title">Vandaag<span class="note-dot hidden" id="note-indicator"></span></span>
+    <div>
+      <button class="btn-ghost btn-sm hidden" id="select-btn" onclick="toggleSelectMode()">Selecteer</button>
+      <button class="btn-ghost btn-sm hidden" id="clear-btn" onclick="clearDay()">Wis dag</button>
+    </div>
+  </div>
+  <div class="select-bar hidden" id="select-bar">
+    <input class="form-input" id="select-recipe-name" type="text" placeholder="Naam recept (bv. Choco Bliss Ball)">
+    <button class="btn-accent btn-sm" onclick="makeRecipeFromSelection()">Maaltijd maken</button>
+    <button class="btn-ghost btn-sm" onclick="toggleSelectMode()">Annuleer</button>
   </div>
   <div id="log-list"></div>
+  <div class="day-note">
+    <textarea id="day-note-input" rows="2" placeholder="Klachten vandaag? Beschrijf hier wanneer je wat merkte…"
+      oninput="autoResize(this)" onblur="saveDayNote()"></textarea>
+  </div>
 </div>
 
 <!-- Modal -->
@@ -344,6 +368,7 @@
     <div class="modal-tabs">
       <button class="modal-tab active" onclick="setModalTab('goals')">Doelen</button>
       <button class="modal-tab" onclick="setModalTab('custom')">Mijn producten</button>
+      <button class="modal-tab" onclick="setModalTab('recipes')">Recepten</button>
       <button class="modal-tab" onclick="setModalTab('data')">Data & Sync</button>
     </div>
 
@@ -377,6 +402,35 @@
       <div class="custom-section">
         <h3>Opgeslagen producten</h3>
         <div id="custom-list"></div>
+      </div>
+    </div>
+
+    <!-- RECEPTEN -->
+    <div id="tab-recipes" class="hidden">
+      <div class="custom-section">
+        <h3>Mijn recepten</h3>
+        <div id="recipe-list"></div>
+        <button class="btn-dark btn-sm" id="new-recipe-btn" onclick="newRecipe()" style="margin-top:10px">+ Nieuw recept</button>
+      </div>
+      <div id="recipe-builder" class="hidden">
+        <div class="divider"></div>
+        <h4 id="rb-title" style="font-size:14px;font-weight:600;margin:14px 0 10px">Nieuw recept</h4>
+        <div class="form-row full" style="margin-bottom:8px">
+          <div class="form-field"><div class="form-label">Naam</div>
+            <input class="form-input" id="rb-name" type="text" placeholder="bv. Choco Bliss Ball" oninput="rbUpdateName(this.value)"></div>
+        </div>
+        <div class="form-row full" style="margin-bottom:6px">
+          <div class="form-field"><div class="form-label">Ingrediënt zoeken (NEVO / eigen producten)</div>
+            <input class="form-input" id="rb-search" type="text" placeholder="Zoeken…" oninput="rbSearch(this.value)"></div>
+        </div>
+        <div id="rb-results"></div>
+        <button class="btn-ghost btn-sm" id="rb-manual-toggle" onclick="rbToggleManual()" style="margin:4px 0 12px">+ Handmatig ingrediënt toevoegen</button>
+        <div id="rb-manual" class="hidden"></div>
+        <div id="rb-ingredients" style="margin-bottom:6px"></div>
+        <div class="form-actions">
+          <button class="btn-accent btn-sm" onclick="saveRecipe()">Recept opslaan</button>
+          <button class="btn-ghost btn-sm" onclick="cancelRecipeBuilder()">Annuleer</button>
+        </div>
       </div>
     </div>
 
@@ -462,7 +516,7 @@ const MEALS = ['Ontbijt','Lunch','Diner','Snack'];
 const KCAL_PER_G = {eiwit:4.1,koolhydraten:4.1,vet:8.8};
 const STORAGE_KEY = 'macros-data';
 const SYNC_KEY = 'macros-sync';
-const SYMPTOMS = ['Buikpijn','Opgeblazen gevoel','Winderigheid','Krampen','Diarree','Obstipatie','Misselijkheid','Vermoeidheid'];
+const MACRO_COLORS = {eiwit:'var(--blue)',koolhydraten:'var(--accent)',vet:'#8b5cf6'};
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let state = loadState();
@@ -472,19 +526,34 @@ let currentDate = todayKey();
 let activeMeal = 'Ontbijt';
 let goalMode = 'gram';
 let offDebounce = null;
-let symptomPanelOpen = null;
+let expandedRecipes = new Set();   // welke recept-regels (log-index) uitgeklapt staan
+let selectMode = false;            // "Selecteer"-modus om items achteraf tot een recept te maken
+let selectedIdx = new Set();
+let recipeBuilder = null;          // {id, name, ingredients:[{item,grams}], searchResults, manualMode} tijdens aanmaken/bewerken
 
 function defaultState() {
-  return {goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[],freq:{},symptoms:{}};
+  return {goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[],freq:{},recipes:[],symptomNotes:{}};
 }
 function loadState() {
   try { const s=localStorage.getItem(STORAGE_KEY); if(s) return ensureFields(JSON.parse(s)); } catch(e){}
   return defaultState();
 }
 function ensureFields(s){
-  if(!s.custom)s.custom=[];if(!s.memory)s.memory={};if(!s.logs)s.logs={};if(!s.goals)s.goals=defaultState().goals;if(!s.freq)s.freq={};if(!s.symptoms)s.symptoms={};
+  if(!s.custom)s.custom=[];if(!s.memory)s.memory={};if(!s.logs)s.logs={};if(!s.goals)s.goals=defaultState().goals;
+  if(!s.freq)s.freq={};if(!s.recipes)s.recipes=[];if(!s.symptomNotes)s.symptomNotes={};
   s.freq=migrateFreq(s.freq);
+  migrateSymptomNotes(s);
   return s;
+}
+// Oude per-maaltijd-klachten (state.symptoms, vervangen door één vrij tekstveld per dag) omzetten
+// naar state.symptomNotes zodat eerder ingevulde klachten niet verloren gaan.
+function migrateSymptomNotes(s){
+  Object.keys(s.symptoms||{}).forEach(d=>{
+    if(s.symptomNotes[d])return;
+    const perMeal=s.symptoms[d]||{};
+    const parts=Object.keys(perMeal).filter(m=>perMeal[m]&&perMeal[m].length).map(m=>`${m}: ${perMeal[m].join(', ')}`);
+    if(parts.length)s.symptomNotes[d]=parts.join('; ');
+  });
 }
 // Herkoppelt favorieten/frequentie-entries aan een stabiele productidentiteit (barcode/custom-id/NEVO-naam)
 // i.p.v. de vroegere mix van getypte zoektekst en productnaam — dat veroorzaakte dat favorieten niet
@@ -610,9 +679,14 @@ function mergeState(remote){
     if(!state.logs[d]||!state.logs[d].length)state.logs[d]=remote.logs[d];
     else if((remote.logs[d]||[]).length>state.logs[d].length)state.logs[d]=remote.logs[d];
   });
-  if(!state.symptoms)state.symptoms={};
-  Object.keys(remote.symptoms||{}).forEach(d=>{
-    state.symptoms[d]={...(state.symptoms[d]||{}),...(remote.symptoms[d]||{})};
+  if(!state.recipes)state.recipes=[];
+  const rIds=new Set(state.recipes.map(r=>r.id));
+  (remote.recipes||[]).forEach(r=>{if(!rIds.has(r.id))state.recipes.push(r);});
+  if(!state.symptomNotes)state.symptomNotes={};
+  Object.keys(remote.symptomNotes||{}).forEach(d=>{
+    const loc=state.symptomNotes[d],rem=remote.symptomNotes[d];
+    if(!loc)state.symptomNotes[d]=rem;
+    else if(rem&&rem!==loc)state.symptomNotes[d]=loc+' / '+rem;
   });
 }
 
@@ -783,13 +857,37 @@ function calcMacros(item,grams,meal){
   return{name:item.Voedingsmiddelnaam||item.name,grams,meal,
     kcal:Math.round(kcal*f),eiwit:r1(eiwit*f),vet:r1(vet*f),koolhydraten:r1(kh*f),_item:item};
 }
-function reCalc(entry){return entry._item?calcMacros(entry._item,entry.grams,entry.meal):entry;}
+// Herberekent een log-entry na wijziging (grams voor een gewoon item, portie voor een recept)
+function reCalcEntry(entry){
+  if(entry.isRecipe){
+    const recipe=state.recipes.find(r=>r.id===entry.recipeId);
+    return recipe?calcRecipeEntry(recipe,entry.portion,entry.meal):entry;
+  }
+  return entry._item?calcMacros(entry._item,entry.grams,entry.meal):entry;
+}
 function sumMacros(items){
   return items.reduce((a,e)=>{
     a.kcal+=e.kcal;a.eiwit=r1(a.eiwit+e.eiwit);a.vet=r1(a.vet+e.vet);a.koolhydraten=r1(a.koolhydraten+e.koolhydraten);return a;
   },{kcal:0,eiwit:0,vet:0,koolhydraten:0});
 }
 function getTotals(d){return sumMacros(getLog(d));}
+
+// ── RECEPTEN ─────────────────────────────────────────────────────────────────
+// Totale macro's van een recept bij een gekozen portiefactor (1x = de hoeveelheden zoals opgeslagen)
+function recipeMacros(recipe,portion){
+  portion=portion||1;
+  return sumMacros(recipe.ingredients.map(ing=>calcMacros(ing.item,ing.grams*portion,null)));
+}
+// Bouwt een log-entry voor een recept, met een snapshot van de ingrediënten (voor uitklappen + PDF),
+// zodat de regel klopt blijft ook als het recept later bewerkt/verwijderd wordt.
+function calcRecipeEntry(recipe,portion,meal){
+  portion=portion||1;
+  const ingCalc=recipe.ingredients.map(ing=>calcMacros(ing.item,ing.grams*portion,meal));
+  const t=sumMacros(ingCalc);
+  return {name:recipe.name,meal,portion,isRecipe:true,recipeId:recipe.id,
+    kcal:t.kcal,eiwit:t.eiwit,vet:t.vet,koolhydraten:t.koolhydraten,
+    ingredients:ingCalc.map(i=>({name:i.name,grams:i.grams,kcal:i.kcal,eiwit:i.eiwit,vet:i.vet,koolhydraten:i.koolhydraten}))};
+}
 
 // ── MEMORY ───────────────────────────────────────────────────────────────────
 function mk(q){return q.toLowerCase().trim();}
@@ -859,11 +957,24 @@ function quickAdd(fi){
   save();render();
   toast(`${f.item.Voedingsmiddelnaam||f.item.name} toegevoegd aan ${activeMeal} ✓`);
 }
+// Snelkeuzebalk met opgeslagen recepten — klikken zet 'm klaar in de pending-lijst met een portiefactor
+function renderRecipeBar(){
+  const bar=document.getElementById('recipe-bar');if(!bar)return;
+  if(!state.recipes||!state.recipes.length){bar.classList.add('hidden');bar.innerHTML='';return;}
+  bar.classList.remove('hidden');
+  bar.innerHTML=state.recipes.map((r,ri)=>`<button class="fav-btn" onclick="addRecipePending(${ri})">${esc(r.name)}</button>`).join('');
+}
+function addRecipePending(ri){
+  const recipe=state.recipes[ri];if(!recipe)return;
+  pending.push({mode:'recipe-portion',recipe,portion:1});
+  renderPending();
+  document.getElementById('pending-section').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 
 // ── RENDER ───────────────────────────────────────────────────────────────────
 function render(){
   document.getElementById('date-picker').value=currentDate;
-  renderMealTabs();renderMacros();renderLog();renderFavBar();updateSyncDot();
+  renderMealTabs();renderMacros();renderLog();renderFavBar();renderRecipeBar();updateSyncDot();
 }
 function renderMealTabs(){
   document.getElementById('meal-tabs').innerHTML=MEALS.map(m=>
@@ -895,32 +1006,44 @@ function renderMacros(){
 }
 function renderLog(){
   const log=getLog(currentDate),el=document.getElementById('log-list');
-  const cb=document.getElementById('clear-btn'),title=document.getElementById('log-title');
+  const cb=document.getElementById('clear-btn'),selBtn=document.getElementById('select-btn'),title=document.getElementById('log-title');
   const today=todayKey();
-  if(currentDate===today)title.textContent='Vandaag';
-  else if(currentDate===shiftStr(today,-1))title.textContent='Gisteren';
-  else if(currentDate===shiftStr(today,1))title.textContent='Morgen';
-  else{const d=new Date(currentDate+'T12:00:00'),s=d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});title.textContent=s.charAt(0).toUpperCase()+s.slice(1);}
+  let label;
+  if(currentDate===today)label='Vandaag';
+  else if(currentDate===shiftStr(today,-1))label='Gisteren';
+  else if(currentDate===shiftStr(today,1))label='Morgen';
+  else{const d=new Date(currentDate+'T12:00:00'),s=d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});label=s.charAt(0).toUpperCase()+s.slice(1);}
+  title.childNodes[0].textContent=label;
   cb.classList.toggle('hidden',!log.length);
+  selBtn.classList.toggle('hidden',!log.length);
   const groups={};MEALS.forEach(m=>groups[m]=[]);
   log.forEach((e,i)=>(groups[e.meal]||groups['Snack']).push({...e,_i:i}));
   el.innerHTML=MEALS.map(meal=>renderMealGroup(meal,groups[meal])).join('');
+  renderSelectBar();
+  renderDayNote();
 }
-// Eén maaltijdblok: header (kcal + klachten-knop + kopieerknop), macro-subtotaal, evt. klachtenpaneel, items
+// Eén maaltijdblok: header (kcal + kopieerknop), macro-subtotaal, items (gewoon of recept)
 function renderMealGroup(meal,items){
-  const syms=getSymptoms(currentDate,meal);
   const subT=items.length?sumMacros(items):null;
   const hdr=`<div class="meal-group-hdr" data-meal="${meal}">
       <span class="meal-group-name">${meal}</span>
       ${subT?`<span class="meal-group-kcal">${subT.kcal} kcal</span>`:''}
-      <button class="btn-sym${syms.length?' active':''}" onclick="toggleSymPanel('${meal}')" title="${syms.length?'Klachten: '+esc(syms.join(', ')):'Klachten registreren'}">⚠</button>
       <button class="btn-copy-meal" onclick="copyMealFromDay('${meal}')" title="Kopieer van andere dag">⎘</button>
     </div>`;
   const sub=subT?`<div class="meal-group-sub">${macroBadges(subT,true)}</div>`:'';
-  const panel=symptomPanelOpen===meal?renderSymPanel(meal,syms):'';
-  const rows=items.map(e=>{
-    const fav=isFavorited(e._item);
-    return `<div class="log-item">
+  const rows=items.map(e=>e.isRecipe?renderRecipeRow(e,meal):renderItemRow(e,meal)).join('');
+  return `<div class="meal-group">${hdr}${sub}<div class="meal-group-items">${rows}</div></div>`;
+}
+function renderItemRow(e,meal){
+  const fav=isFavorited(e._item);
+  const check=selectMode?`<input class="select-check" type="checkbox" ${selectedIdx.has(e._i)?'checked':''} onchange="toggleSelectItem(${e._i})">`:'';
+  const actions=selectMode?'':`<select class="move-select" title="Verplaats naar..." onchange="moveEntry(${e._i},this.value)">
+        ${MEALS.map(m=>`<option value="${m}"${m===meal?' selected':''}>${m}</option>`).join('')}
+      </select>
+      <button class="log-fav${fav?' active':''}" onclick="toggleFavorite(${e._i})" title="${fav?'Verwijder uit favorieten':'Voeg toe aan favorieten'}">${fav?'★':'☆'}</button>
+      <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>`;
+  return `<div class="log-item">
+      ${check}
       <div class="log-info"><div class="log-name">${esc(e.name)}</div>
         <div class="log-sub">
           <button class="log-grams-btn" onclick="startEditGrams(${e._i})" id="gbtn-${e._i}">${e.grams}g</button>
@@ -929,42 +1052,100 @@ function renderMealGroup(meal,items){
         </div></div>
       <div class="log-right"><div class="log-kcal">${e.kcal} kcal</div>
         <div class="log-macros">${macroBadges(e)}</div></div>
+      ${actions}
+    </div>`;
+}
+function renderRecipeRow(e,meal){
+  const open=expandedRecipes.has(e._i);
+  const ingredients=open?`<div class="recipe-ingredients">${(e.ingredients||[]).map(ing=>
+    `<div class="recipe-ingredient-row"><span>${esc(ing.name)} — ${ing.grams}g</span><span>${ing.kcal} kcal</span></div>`).join('')}</div>`:'';
+  return `<div class="log-item">
+      <div class="log-info"><div class="log-name"><button class="recipe-toggle${open?' open':''}" onclick="toggleRecipeExpand(${e._i})" title="Ingrediënten tonen/verbergen">▸</button>${esc(e.name)}<span class="recipe-badge">Recept</span></div>
+        <div class="log-sub">
+          <button class="log-grams-btn" onclick="startEditGrams(${e._i})" id="gbtn-${e._i}">${e.portion}x</button>
+          <input class="log-grams-edit hidden" id="gedit-${e._i}" type="number" min="0.25" step="0.25" value="${e.portion}"
+            onblur="commitPortion(${e._i})" onkeydown="portionKey(event,${e._i})">
+        </div></div>
+      <div class="log-right"><div class="log-kcal">${e.kcal} kcal</div>
+        <div class="log-macros">${macroBadges(e)}</div></div>
       <select class="move-select" title="Verplaats naar..." onchange="moveEntry(${e._i},this.value)">
         ${MEALS.map(m=>`<option value="${m}"${m===meal?' selected':''}>${m}</option>`).join('')}
       </select>
-      <button class="log-fav${fav?' active':''}" onclick="toggleFavorite(${e._i})" title="${fav?'Verwijder uit favorieten':'Voeg toe aan favorieten'}">${fav?'★':'☆'}</button>
       <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>
-    </div>`;
-  }).join('');
-  return `<div class="meal-group">${hdr}${sub}${panel}<div class="meal-group-items">${rows}</div></div>`;
+    </div>${ingredients}`;
 }
-// Compacte gekleurde badges voor E/KH/V — vaste kleur per macro, groter/vetter op maaltijd-totaalniveau
+// Kleine gekleurde bolletjes vóór elk cijfer i.p.v. volle badges — rustiger en compacter.
+// Vaste volgorde (Eiwit/Koolhydraten/Vet) + kleur is genoeg om te onderscheiden, geen letters nodig.
 function macroBadges(m,big){
   const cls=big?' total':'';
-  return `<span class="macro-badge e${cls}">E ${m.eiwit}g</span> <span class="macro-badge kh${cls}">KH ${m.koolhydraten}g</span> <span class="macro-badge v${cls}">V ${m.vet}g</span>`;
+  const dot=(color,val,label)=>`<span class="macro-dot${cls}" style="background:${color}" title="${label}: ${val}g"></span><span class="macro-val${cls}">${val}g</span>`;
+  return dot(MACRO_COLORS.eiwit,m.eiwit,'Eiwit')+dot(MACRO_COLORS.koolhydraten,m.koolhydraten,'Koolhydraten')+dot(MACRO_COLORS.vet,m.vet,'Vet');
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-// ── FODMAP: KLACHTEN PER MAALTIJD ──────────────────────────────────────────────
-function getSymptoms(d,meal){
-  return (state.symptoms&&state.symptoms[d]&&state.symptoms[d][meal])||[];
-}
-function toggleSymPanel(meal){
-  symptomPanelOpen=symptomPanelOpen===meal?null:meal;
+function toggleRecipeExpand(idx){
+  if(expandedRecipes.has(idx))expandedRecipes.delete(idx);else expandedRecipes.add(idx);
   renderLog();
 }
-function toggleSymptom(meal,symptom){
-  if(!state.symptoms)state.symptoms={};
-  if(!state.symptoms[currentDate])state.symptoms[currentDate]={};
-  const list=state.symptoms[currentDate][meal]||[];
-  const next=list.includes(symptom)?list.filter(s=>s!==symptom):[...list,symptom];
-  if(next.length)state.symptoms[currentDate][meal]=next;
-  else delete state.symptoms[currentDate][meal];
-  if(!Object.keys(state.symptoms[currentDate]).length)delete state.symptoms[currentDate];
-  save();renderLog();
+
+// ── FODMAP: VRIJE KLACHTEN-NOTITIE PER DAG ────────────────────────────────────
+function renderDayNote(){
+  const ta=document.getElementById('day-note-input');if(!ta)return;
+  const note=(state.symptomNotes&&state.symptomNotes[currentDate])||'';
+  ta.value=note;autoResize(ta);
+  const ind=document.getElementById('note-indicator');
+  if(ind){ind.classList.toggle('hidden',!note);ind.title=note?('Notitie: '+note.slice(0,80)):'';}
 }
-function renderSymPanel(meal,syms){
-  return `<div class="sym-panel">${SYMPTOMS.map(s=>`<button class="sym-chip${syms.includes(s)?' active':''}" onclick="toggleSymptom('${meal}','${s}')">${esc(s)}</button>`).join('')}</div>`;
+function saveDayNote(){
+  const ta=document.getElementById('day-note-input');if(!ta)return;
+  const val=ta.value.trim();
+  if(!state.symptomNotes)state.symptomNotes={};
+  if(val)state.symptomNotes[currentDate]=val;else delete state.symptomNotes[currentDate];
+  save();
+  const ind=document.getElementById('note-indicator');
+  if(ind){ind.classList.toggle('hidden',!val);ind.title=val?('Notitie: '+val.slice(0,80)):'';}
+}
+
+// ── SELECTEREN: achteraf items groeperen tot een recept ──────────────────────
+function toggleSelectMode(){
+  selectMode=!selectMode;selectedIdx=new Set();
+  renderLog();
+}
+function toggleSelectItem(idx){
+  const log=getLog(currentDate),entry=log[idx];
+  if(!entry||entry.isRecipe)return;
+  if(selectedIdx.has(idx)){selectedIdx.delete(idx);}
+  else{
+    if(selectedIdx.size){
+      const firstIdx=[...selectedIdx][0];
+      if(log[firstIdx].meal!==entry.meal){toast('Kies items uit dezelfde maaltijd');return;}
+    }
+    selectedIdx.add(idx);
+  }
+  renderLog();
+}
+function renderSelectBar(){
+  const bar=document.getElementById('select-bar'),btn=document.getElementById('select-btn');
+  if(!bar||!btn)return;
+  btn.textContent=selectMode?'Annuleer selecteren':'Selecteer';
+  bar.classList.toggle('hidden',!selectMode);
+}
+function makeRecipeFromSelection(){
+  if(selectedIdx.size<2){toast('Selecteer minstens 2 items');return;}
+  const nameInp=document.getElementById('select-recipe-name');
+  const name=(nameInp&&nameInp.value.trim())||'';
+  if(!name){toast('Geef het recept een naam');return;}
+  const log=getLog(currentDate);
+  const idxs=[...selectedIdx].sort((a,b)=>a-b);
+  const items=idxs.map(i=>log[i]);
+  const meal=items[0].meal;
+  const ingredients=items.map(e=>({item:e._item,grams:e.grams}));
+  const recipe={id:Date.now(),name,ingredients};
+  state.recipes.push(recipe);
+  idxs.slice().reverse().forEach(i=>log.splice(i,1));
+  log.push(calcRecipeEntry(recipe,1,meal));
+  selectMode=false;selectedIdx=new Set();
+  save();render();
+  toast(`'${name}' aangemaakt en toegevoegd ✓`);
 }
 
 // ── GRAM EDIT ────────────────────────────────────────────────────────────────
@@ -973,13 +1154,21 @@ function commitGrams(idx){
   const inp=document.getElementById(`gedit-${idx}`);if(!inp)return;
   const g=parseFloat(inp.value);if(!g||g<=0){cancelEditGrams(idx);return;}
   const log=getLog(currentDate);if(!log[idx])return;
-  log[idx].grams=g;log[idx]=reCalc(log[idx]);save();render();toast('Hoeveelheid bijgewerkt ✓');
+  log[idx].grams=g;log[idx]=reCalcEntry(log[idx]);save();render();toast('Hoeveelheid bijgewerkt ✓');
 }
 function cancelEditGrams(idx){
   const b=document.getElementById(`gbtn-${idx}`),i=document.getElementById(`gedit-${idx}`);
   if(b)b.classList.remove('hidden');if(i)i.classList.add('hidden');
 }
 function gramsKey(e,idx){if(e.key==='Enter'){e.preventDefault();commitGrams(idx);}if(e.key==='Escape'){e.preventDefault();cancelEditGrams(idx);}}
+// Portie van een gelogd recept aanpassen — hergebruikt dezelfde in/uitklap-knoppen als bij grams (startEditGrams/cancelEditGrams)
+function commitPortion(idx){
+  const inp=document.getElementById(`gedit-${idx}`);if(!inp)return;
+  const p=parseFloat(inp.value);if(!p||p<=0){cancelEditGrams(idx);return;}
+  const log=getLog(currentDate);if(!log[idx])return;
+  log[idx].portion=p;log[idx]=reCalcEntry(log[idx]);save();render();toast('Portie bijgewerkt ✓');
+}
+function portionKey(e,idx){if(e.key==='Enter'){e.preventDefault();commitPortion(idx);}if(e.key==='Escape'){e.preventDefault();cancelEditGrams(idx);}}
 
 // ── PENDING ──────────────────────────────────────────────────────────────────
 function renderPending(){
@@ -987,6 +1176,14 @@ function renderPending(){
   if(!pending.length){sec.classList.add('hidden');return;}
   sec.classList.remove('hidden');
   cont.innerHTML=pending.map((item,pi)=>{
+    if(item.mode==='recipe-portion'){
+      const t=recipeMacros(item.recipe,item.portion);
+      const inner=`<div class="mem-card"><div><div class="mem-name">${esc(item.recipe.name)}<span class="recipe-badge">Recept</span></div>
+        <div class="mem-sub" id="rpsub-${pi}">${item.portion}x · ${t.kcal} kcal · E ${t.eiwit}g · KH ${t.koolhydraten}g · V ${t.vet}g</div></div></div>`;
+      return `<div class="pend-item"><div class="pend-label"><strong>${esc(item.recipe.name)}</strong>
+        <span class="grams-field"><input class="grams-inp" id="rpp-${pi}" type="number" min="0.25" step="0.25" value="${item.portion}" oninput="updRP(${pi},this.value)"><span class="grams-unit">x</span></span>
+        </div>${inner}</div>`;
+    }
     if(item.mode==='unit-ask'){
       const inner=`<div class="manual-form"><h4>Hoeveel gram is 1 ${esc(item.unitKey)}?</h4>
         <div class="form-row full"><div class="form-field">
@@ -1167,6 +1364,12 @@ function updPG(pi,val){
     if(sub)sub.textContent=`${g}g · ${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g`;
   }
 }
+function updRP(pi,val){
+  const portion=parseFloat(val);if(!portion||portion<=0)return;pending[pi].portion=portion;
+  const t=recipeMacros(pending[pi].recipe,portion);
+  const sub=document.getElementById(`rpsub-${pi}`);
+  if(sub)sub.textContent=`${portion}x · ${t.kcal} kcal · E ${t.eiwit}g · KH ${t.koolhydraten}g · V ${t.vet}g`;
+}
 
 function addManualProduct(pi){
   const name=(document.getElementById(`mn-${pi}`)||{}).value?.trim();
@@ -1210,9 +1413,15 @@ function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrol
 
 function confirmAll(){
   if(pending.some(i=>i.mode==='unit-ask')){toast('Beantwoord eerst hoeveel gram 1 stuk/eenheid is');return;}
-  pending.forEach((item,pi)=>{const inp=document.getElementById(`pg-${pi}`);if(inp){const g=parseFloat(inp.value);if(g>0)item.grams=g;}});
+  pending.forEach((item,pi)=>{
+    const inp=document.getElementById(`pg-${pi}`);if(inp){const g=parseFloat(inp.value);if(g>0)item.grams=g;}
+    const pinp=document.getElementById(`rpp-${pi}`);if(pinp){const p=parseFloat(pinp.value);if(p>0)item.portion=p;}
+  });
   const log=getLog(currentDate);let added=0;
   for(const item of pending){
+    if(item.mode==='recipe-portion'){
+      log.push(calcRecipeEntry(item.recipe,item.portion,activeMeal));added++;continue;
+    }
     let nevoItem=null;
     if(item.mode==='memory')nevoItem=item.memory;
     else if(item.mode==='matches'&&item.selIdx>=0)nevoItem=item.matches[item.selIdx];
@@ -1267,8 +1476,8 @@ function copyMealFromDay(meal){
 
 // ── DATE ─────────────────────────────────────────────────────────────────────
 function shiftStr(d,n){const dt=new Date(d+'T12:00:00');dt.setDate(dt.getDate()+n);return dt.toLocaleDateString('sv-SE');}
-function shiftDay(n){currentDate=shiftStr(currentDate,n);pending=[];symptomPanelOpen=null;renderPending();render();}
-function setDate(v){if(v){currentDate=v;pending=[];symptomPanelOpen=null;renderPending();render();}}
+function shiftDay(n){currentDate=shiftStr(currentDate,n);pending=[];expandedRecipes=new Set();selectMode=false;selectedIdx=new Set();renderPending();render();}
+function setDate(v){if(v){currentDate=v;pending=[];expandedRecipes=new Set();selectMode=false;selectedIdx=new Set();renderPending();render();}}
 function setMeal(m){activeMeal=m;renderMealTabs();}
 
 // ── MODAL ────────────────────────────────────────────────────────────────────
@@ -1282,9 +1491,10 @@ function openModal(){
 function closeModal(){document.getElementById('settings-modal').classList.add('hidden');}
 function closeModalOutside(e){if(e.target===document.getElementById('settings-modal'))closeModal();}
 function setModalTab(tab){
-  ['goals','custom','data'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));
-  document.querySelectorAll('.modal-tab').forEach((btn,i)=>btn.classList.toggle('active',['goals','custom','data'][i]===tab));
+  ['goals','custom','recipes','data'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));
+  document.querySelectorAll('.modal-tab').forEach((btn,i)=>btn.classList.toggle('active',['goals','custom','recipes','data'][i]===tab));
   if(tab==='custom')renderCustomList();
+  if(tab==='recipes'){recipeBuilder=null;renderRecipeList();renderRecipeBuilder();}
   if(tab==='data'){renderSyncUI();initFodmapDates();}
 }
 // Vult de periode-velden alleen als ze nog leeg zijn, zodat een eerder gekozen periode blijft staan
@@ -1371,6 +1581,167 @@ function deleteCustom(i){
   state.custom.splice(i,1);customFuse=null;save();renderCustomList();
 }
 
+// ── RECEPTEN-BUILDER (Instellingen → Recepten) ────────────────────────────────
+function renderRecipeList(){
+  const el=document.getElementById('recipe-list');if(!el)return;
+  if(!state.recipes.length){el.innerHTML='<div class="custom-empty">Nog geen recepten opgeslagen.</div>';return;}
+  el.innerHTML=state.recipes.map(r=>{
+    const t=recipeMacros(r,1);
+    return `<div class="custom-item">
+      <div><div class="custom-item-name">${esc(r.name)}</div>
+        <div class="custom-item-sub">${r.ingredients.length} ingrediënt${r.ingredients.length===1?'':'en'} · ${t.kcal} kcal per portie</div></div>
+      <div>
+        <button class="custom-item-del" onclick="editRecipe(${r.id})" title="Bewerken">✎</button>
+        <button class="custom-item-del" onclick="deleteRecipe(${r.id})" title="Verwijderen">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function deleteRecipe(id){
+  const r=state.recipes.find(r=>r.id===id);if(!r)return;
+  if(!confirm(`'${r.name}' verwijderen? (al gelogde items met dit recept blijven gewoon staan)`))return;
+  state.recipes=state.recipes.filter(x=>x.id!==id);
+  save();renderRecipeList();
+}
+function newRecipe(){
+  recipeBuilder={id:null,name:'',ingredients:[],searchResults:[],manualMode:false};
+  renderRecipeBuilder();
+  const inp=document.getElementById('rb-name');if(inp){inp.value='';inp.focus();}
+}
+function editRecipe(id){
+  const r=state.recipes.find(r=>r.id===id);if(!r)return;
+  recipeBuilder={id:r.id,name:r.name,ingredients:r.ingredients.map(i=>({...i})),searchResults:[],manualMode:false};
+  renderRecipeBuilder();
+  const inp=document.getElementById('rb-name');if(inp)inp.value=r.name;
+}
+function cancelRecipeBuilder(){
+  recipeBuilder=null;
+  renderRecipeBuilder();
+}
+function renderRecipeBuilder(){
+  const wrap=document.getElementById('recipe-builder'),newBtn=document.getElementById('new-recipe-btn');
+  if(!wrap||!newBtn)return;
+  if(!recipeBuilder){wrap.classList.add('hidden');newBtn.classList.remove('hidden');return;}
+  wrap.classList.remove('hidden');newBtn.classList.add('hidden');
+  document.getElementById('rb-title').textContent=recipeBuilder.id?'Recept bewerken':'Nieuw recept';
+  document.getElementById('rb-results').innerHTML=rbSearchResultsHtml();
+  document.getElementById('rb-manual').classList.toggle('hidden',!recipeBuilder.manualMode);
+  if(recipeBuilder.manualMode)document.getElementById('rb-manual').innerHTML=rbManualFormHtml();
+  document.getElementById('rb-ingredients').innerHTML=rbIngredientsHtml();
+}
+function rbUpdateName(val){if(recipeBuilder)recipeBuilder.name=val;}
+function rbSearch(val){
+  if(!recipeBuilder)return;
+  recipeBuilder.searchResults=val.trim()?searchAll(val,6):[];
+  const el=document.getElementById('rb-results');if(el)el.innerHTML=rbSearchResultsHtml();
+}
+function rbSearchResultsHtml(){
+  const results=(recipeBuilder&&recipeBuilder.searchResults)||[];
+  if(!results.length)return '';
+  return results.map((r,i)=>{
+    const isC=r._type==='custom'||r._type==='off';
+    const name=isC?r.name:r.Voedingsmiddelnaam;
+    const kcal=isC?r.kcal:fv(r.kcal);
+    return `<div class="match-card${isC?' custom-card':''}" onclick="rbSelectIngredient(${i})">
+      <div><div class="match-name">${esc(name)}${isC?'<span class="match-badge">Eigen</span>':''}</div>
+        <div class="match-detail">${kcal} kcal per 100g</div></div></div>`;
+  }).join('');
+}
+function rbSelectIngredient(i){
+  if(!recipeBuilder)return;
+  const item=(recipeBuilder.searchResults||[])[i];if(!item)return;
+  recipeBuilder.ingredients.push({item,grams:100});
+  recipeBuilder.searchResults=[];
+  const searchInp=document.getElementById('rb-search');if(searchInp)searchInp.value='';
+  renderRecipeBuilder();
+}
+function rbToggleManual(){
+  if(!recipeBuilder)return;
+  recipeBuilder.manualMode=!recipeBuilder.manualMode;
+  renderRecipeBuilder();
+}
+function rbManualFormHtml(){
+  return `<div class="manual-form">
+    <h4>Handmatig ingrediënt</h4>
+    <div class="form-row full"><div class="form-field"><div class="form-label">Naam</div>
+      <input class="form-input" id="rbm-name" type="text" placeholder="bv. Cacaopoeder"></div></div>
+    <div class="form-row">
+      <div class="form-field"><div class="form-label">kcal /100g</div><input class="form-input" id="rbm-kcal" type="number" min="0"></div>
+      <div class="form-field"><div class="form-label">Eiwit /100g</div><input class="form-input" id="rbm-eiwit" type="number" min="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><div class="form-label">Koolhydr. /100g</div><input class="form-input" id="rbm-kh" type="number" min="0"></div>
+      <div class="form-field"><div class="form-label">Vet /100g</div><input class="form-input" id="rbm-vet" type="number" min="0"></div>
+    </div>
+    <div class="form-row"><div class="form-field"><div class="form-label">Hoeveelheid (g)</div><input class="form-input" id="rbm-grams" type="number" min="1" value="100"></div></div>
+    <div class="form-actions"><button class="btn-blue" onclick="rbAddManual()">Toevoegen aan recept</button></div>
+  </div>`;
+}
+function rbAddManual(){
+  if(!recipeBuilder)return;
+  const name=(document.getElementById('rbm-name')||{}).value?.trim();
+  const kcal=parseFloat((document.getElementById('rbm-kcal')||{}).value)||0;
+  const eiwit=parseFloat((document.getElementById('rbm-eiwit')||{}).value)||0;
+  const kh=parseFloat((document.getElementById('rbm-kh')||{}).value)||0;
+  const vet=parseFloat((document.getElementById('rbm-vet')||{}).value)||0;
+  const grams=parseFloat((document.getElementById('rbm-grams')||{}).value)||100;
+  if(!name){toast('Vul een naam in');return;}
+  if(!kcal){toast('Vul minimaal de kcal in');return;}
+  const custom={id:Date.now(),name,kcal,eiwit,koolhydraten:kh,vet,
+    Voedingsmiddelnaam:name,'Eiwit (g)':eiwit,'Vet (g)':vet,'Koolhydraten (g)':kh,
+    _type:'custom',source:'manual'};
+  state.custom.push(custom);customFuse=null;
+  recipeBuilder.ingredients.push({item:custom,grams});
+  recipeBuilder.manualMode=false;
+  renderRecipeBuilder();
+  toast(`'${name}' toegevoegd ✓`);
+}
+function rbIngredientsHtml(){
+  if(!recipeBuilder||!recipeBuilder.ingredients.length)return '<div class="custom-empty">Nog geen ingrediënten toegevoegd.</div>';
+  const rows=recipeBuilder.ingredients.map((ing,i)=>{
+    const name=ing.item.Voedingsmiddelnaam||ing.item.name;
+    return `<div class="custom-item">
+      <div><div class="custom-item-name">${esc(name)}</div>
+        <div class="custom-item-sub"><input class="form-input" style="width:64px;display:inline-block;padding:4px 6px;font-size:12px" type="number" min="1" value="${ing.grams}" oninput="rbUpdateGrams(${i},this.value)"> g</div></div>
+      <button class="custom-item-del" onclick="rbRemoveIngredient(${i})">✕</button>
+    </div>`;
+  }).join('');
+  const totals=recipeMacros({ingredients:recipeBuilder.ingredients},1);
+  return rows+`<div id="rb-totals" style="font-size:12px;color:var(--muted);margin-top:8px">Totaal: ${totals.kcal} kcal · E ${totals.eiwit}g · KH ${totals.koolhydraten}g · V ${totals.vet}g</div>`;
+}
+function rbUpdateGrams(i,val){
+  if(!recipeBuilder)return;
+  const g=parseFloat(val);if(!g||g<=0)return;
+  recipeBuilder.ingredients[i].grams=g;
+  const totals=recipeMacros({ingredients:recipeBuilder.ingredients},1);
+  const totalsEl=document.getElementById('rb-totals');
+  if(totalsEl)totalsEl.textContent=`Totaal: ${totals.kcal} kcal · E ${totals.eiwit}g · KH ${totals.koolhydraten}g · V ${totals.vet}g`;
+}
+function rbRemoveIngredient(i){
+  if(!recipeBuilder)return;
+  recipeBuilder.ingredients.splice(i,1);
+  renderRecipeBuilder();
+}
+function saveRecipe(){
+  if(!recipeBuilder)return;
+  const nameInp=document.getElementById('rb-name');
+  const name=(nameInp&&nameInp.value.trim())||recipeBuilder.name||'';
+  if(!name){toast('Geef het recept een naam');return;}
+  if(!recipeBuilder.ingredients.length){toast('Voeg minstens 1 ingrediënt toe');return;}
+  if(recipeBuilder.id){
+    const r=state.recipes.find(r=>r.id===recipeBuilder.id);
+    if(r){r.name=name;r.ingredients=recipeBuilder.ingredients;}
+  }else{
+    state.recipes.push({id:Date.now(),name,ingredients:recipeBuilder.ingredients});
+  }
+  save();
+  recipeBuilder=null;
+  renderRecipeBuilder();
+  renderRecipeList();
+  renderRecipeBar();
+  toast(`'${name}' opgeslagen ✓`);
+}
+
 // ── EXPORT / IMPORT ──────────────────────────────────────────────────────────
 function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
@@ -1397,8 +1768,14 @@ function importData(){
           else cur.pinned=!!(cur.pinned||v.pinned);
         });
         Object.keys(imp.logs||{}).forEach(d=>{if(!merged.logs[d])merged.logs[d]=imp.logs[d];});
-        if(!merged.symptoms)merged.symptoms={};
-        Object.keys(imp.symptoms||{}).forEach(d=>{merged.symptoms[d]={...(merged.symptoms[d]||{}),...(imp.symptoms[d]||{})};});
+        if(!merged.recipes)merged.recipes=[];
+        merged.recipes=[...merged.recipes,...(imp.recipes||[]).filter(r=>!merged.recipes.find(e=>e.id===r.id))];
+        if(!merged.symptomNotes)merged.symptomNotes={};
+        Object.keys(imp.symptomNotes||{}).forEach(d=>{
+          const loc=merged.symptomNotes[d],rem=imp.symptomNotes[d];
+          if(!loc)merged.symptomNotes[d]=rem;
+          else if(rem&&rem!==loc)merged.symptomNotes[d]=loc+' / '+rem;
+        });
         state=merged;customFuse=null;save();render();toast('Data geïmporteerd ✓');
       }catch(e){toast('Fout bij importeren');}
     };reader.readAsText(file);
@@ -1456,10 +1833,17 @@ async function exportFodmapPdf(){
       const items=log.filter(e=>e.meal===meal);
       if(!items.length)return;
       line(meal,{bold:true,size:11});
-      items.forEach(e=>line(`  ${e.name} — ${e.grams}g — ${e.kcal} kcal (E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g)`));
-      const syms=getSymptoms(d,meal);
-      if(syms.length)line(`  Klachten: ${syms.join(', ')}`);
+      items.forEach(e=>{
+        if(e.isRecipe){
+          line(`  ${e.name} (${e.portion}x) — ${e.kcal} kcal (E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g)`);
+          (e.ingredients||[]).forEach(ing=>line(`    - ${ing.name} (${ing.grams}g)`));
+        }else{
+          line(`  ${e.name} — ${e.grams}g — ${e.kcal} kcal (E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g)`);
+        }
+      });
     });
+    const note=(state.symptomNotes&&state.symptomNotes[d])||'';
+    if(note)line(`Notitie: ${note}`);
     const dayT=sumMacros(log);
     y+=2;line(`Totaal: ${dayT.kcal} kcal · E ${dayT.eiwit}g · KH ${dayT.koolhydraten}g · V ${dayT.vet}g`,{bold:true});
     y+=10;
