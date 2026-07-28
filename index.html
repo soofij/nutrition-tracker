@@ -16,6 +16,10 @@
       background:var(--bg);color:var(--fg);min-height:100vh;
       padding:24px 16px 100px;font-size:15px;line-height:1.4}
     .wrap{max-width:580px;margin:0 auto}
+    /* Op brede schermen (laptop/desktop) meer lucht — mobiel (<900px) blijft ongewijzigd, zelfde opbouw */
+    @media (min-width:900px){
+      .wrap{max-width:760px}
+    }
 
     .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
     .top h1{font-size:20px;font-weight:700;letter-spacing:-.03em}
