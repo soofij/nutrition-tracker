@@ -175,7 +175,21 @@
     .meal-group-kcal{font-size:13px;font-weight:600;color:var(--muted)}
     .btn-copy-meal{background:none;border:none;cursor:pointer;font-size:15px;opacity:.45;padding:0 0 0 6px;line-height:1;transition:opacity .15s}
     .btn-copy-meal:hover{opacity:.85}
+    .btn-sym{background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);opacity:.4;padding:0 0 0 8px;line-height:1;transition:opacity .15s,color .15s}
+    .btn-sym:hover{opacity:.85}
+    .btn-sym.active{opacity:1;color:#d97706}
+    .sym-panel{display:flex;flex-wrap:wrap;gap:5px;padding:2px 11px 8px}
+    .sym-chip{border:1.5px solid var(--border);background:#fff;border-radius:14px;padding:3px 10px;
+      font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s}
+    .sym-chip:hover{border-color:#f59e0b;color:#92400e}
+    .sym-chip.active{background:#fef3c7;border-color:#f59e0b;color:#92400e}
     .meal-group-sub{font-size:11px;color:var(--muted);padding:2px 11px 6px}
+    .macro-badge{display:inline-block;border-radius:9px;padding:1px 6px;font-weight:700;
+      font-size:11px;color:#fff;letter-spacing:.01em}
+    .macro-badge.e{background:var(--blue)}
+    .macro-badge.kh{background:var(--accent)}
+    .macro-badge.v{background:#8b5cf6}
+    .macro-badge.total{font-size:12px;font-weight:800;padding:2px 7px}
     .meal-group-items{padding:0 4px}
     .log-item{display:flex;align-items:center;padding:9px 0;
       border-bottom:1px solid var(--border);gap:10px}
@@ -246,7 +260,7 @@
     .sync-field{margin-bottom:10px}
     .sync-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
     .sync-input{width:100%;border:1.5px solid var(--border);border-radius:7px;
-      padding:8px 10px;font-family:inherit;font-size:13px;outline:none;
+      padding:8px 10px;font-size:13px;outline:none;
       background:#fff;transition:border-color .15s;font-family:monospace}
     .sync-input:focus{border-color:var(--accent)}
     .sync-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
@@ -406,6 +420,18 @@
         <div class="divider" style="margin:16px 0"></div>
       </div>
 
+      <!-- FODMAP dagboek -->
+      <div class="data-section" style="margin-bottom:16px">
+        <h3>FODMAP-dagboek</h3>
+        <div class="data-desc" style="margin-bottom:8px">PDF met je gelogde items en klachten per maaltijd, voor een gekozen periode.</div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-field"><div class="form-label">Van</div><input class="form-input" id="fodmap-start" type="date"></div>
+          <div class="form-field"><div class="form-label">Tot</div><input class="form-input" id="fodmap-end" type="date"></div>
+        </div>
+        <button class="btn-dark btn-sm" onclick="exportFodmapPdf()">↓ Download PDF</button>
+      </div>
+      <div class="divider" style="margin:16px 0"></div>
+
       <!-- Export / Import -->
       <div class="data-section" style="margin-bottom:16px">
         <h3>Exporteer & importeer</h3>
@@ -432,6 +458,7 @@ const MEALS = ['Ontbijt','Lunch','Diner','Snack'];
 const KCAL_PER_G = {eiwit:4.1,koolhydraten:4.1,vet:8.8};
 const STORAGE_KEY = 'macros-data';
 const SYNC_KEY = 'macros-sync';
+const SYMPTOMS = ['Buikpijn','Opgeblazen gevoel','Winderigheid','Krampen','Diarree','Obstipatie','Misselijkheid','Vermoeidheid'];
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let state = loadState();
@@ -441,19 +468,44 @@ let currentDate = todayKey();
 let activeMeal = 'Ontbijt';
 let goalMode = 'gram';
 let offDebounce = null;
+let symptomPanelOpen = null;
 
 function defaultState() {
-  return {goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[],freq:{}};
+  return {goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[],freq:{},symptoms:{}};
 }
 function loadState() {
   try { const s=localStorage.getItem(STORAGE_KEY); if(s) return ensureFields(JSON.parse(s)); } catch(e){}
-  for (const k of ['macros-v3','macros-v2','macros-v1']) {
-    try { const s=localStorage.getItem(k); if(s){const d=ensureFields(JSON.parse(s));localStorage.removeItem(k);return d;} } catch(e){}
-  }
   return defaultState();
 }
 function ensureFields(s){
-  if(!s.custom)s.custom=[];if(!s.memory)s.memory={};if(!s.logs)s.logs={};if(!s.goals)s.goals=defaultState().goals;if(!s.freq)s.freq={};return s;
+  if(!s.custom)s.custom=[];if(!s.memory)s.memory={};if(!s.logs)s.logs={};if(!s.goals)s.goals=defaultState().goals;if(!s.freq)s.freq={};if(!s.symptoms)s.symptoms={};
+  s.freq=migrateFreq(s.freq);
+  return s;
+}
+// Herkoppelt favorieten/frequentie-entries aan een stabiele productidentiteit (barcode/custom-id/NEVO-naam)
+// i.p.v. de vroegere mix van getypte zoektekst en productnaam — dat veroorzaakte dat favorieten niet
+// herkend werden bij een andere hoeveelheid. Voegt ook duplicaten samen die hierdoor ontstonden.
+function migrateFreq(freq){
+  const out={};
+  Object.values(freq||{}).forEach(f=>{
+    if(!f||!f.item)return;
+    const key=productKey(f.item);
+    const cur=out[key];
+    if(!cur){out[key]=f;return;}
+    const curNewer=daysSince(cur.lastUsed)<=daysSince(f.lastUsed);
+    out[key]={count:(cur.count||0)+(f.count||0),item:curNewer?cur.item:f.item,
+      pinned:!!(cur.pinned||f.pinned),
+      lastGrams:curNewer?cur.lastGrams:f.lastGrams,
+      lastUsed:curNewer?cur.lastUsed:f.lastUsed};
+  });
+  return out;
+}
+// Stabiele identiteit van een product, los van hoeveelheid en los van hoe het gevonden werd
+function productKey(item){
+  if(!item)return '';
+  if(item.offId)return 'o:'+item.offId;
+  if(item._type==='custom'&&item.id!=null)return 'c:'+item.id;
+  return 'n:'+mk(item.Voedingsmiddelnaam||item.name||'');
 }
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));pushToGist();}
 function todayKey(){return new Date().toLocaleDateString('sv-SE');}
@@ -553,6 +605,10 @@ function mergeState(remote){
   Object.keys(remote.logs||{}).forEach(d=>{
     if(!state.logs[d]||!state.logs[d].length)state.logs[d]=remote.logs[d];
     else if((remote.logs[d]||[]).length>state.logs[d].length)state.logs[d]=remote.logs[d];
+  });
+  if(!state.symptoms)state.symptoms={};
+  Object.keys(remote.symptoms||{}).forEach(d=>{
+    state.symptoms[d]={...(state.symptoms[d]||{}),...(remote.symptoms[d]||{})};
   });
 }
 
@@ -724,25 +780,31 @@ function calcMacros(item,grams,meal){
     kcal:Math.round(kcal*f),eiwit:r1(eiwit*f),vet:r1(vet*f),koolhydraten:r1(kh*f),_item:item};
 }
 function reCalc(entry){return entry._item?calcMacros(entry._item,entry.grams,entry.meal):entry;}
-function getTotals(d){return getLog(d).reduce((a,e)=>{
-  a.kcal+=e.kcal;a.eiwit=r1(a.eiwit+e.eiwit);a.vet=r1(a.vet+e.vet);a.koolhydraten=r1(a.koolhydraten+e.koolhydraten);return a;
-},{kcal:0,eiwit:0,vet:0,koolhydraten:0});}
+function sumMacros(items){
+  return items.reduce((a,e)=>{
+    a.kcal+=e.kcal;a.eiwit=r1(a.eiwit+e.eiwit);a.vet=r1(a.vet+e.vet);a.koolhydraten=r1(a.koolhydraten+e.koolhydraten);return a;
+  },{kcal:0,eiwit:0,vet:0,koolhydraten:0});
+}
+function getTotals(d){return sumMacros(getLog(d));}
 
 // ── MEMORY ───────────────────────────────────────────────────────────────────
 function mk(q){return q.toLowerCase().trim();}
 function remember(query,item){state.memory[mk(query)]=item;}
 function recall(query){return state.memory[mk(query)]||null;}
-// Standaard-hoeveelheid bij ontbrekende invoer: laatst gebruikte grams, anders 100g
+// Standaard-hoeveelheid bij ontbrekende invoer: laatst gebruikte grams voor dit product, anders 100g
 function defaultGramsFor(query){
-  const f=state.freq&&state.freq[mk(query)];
+  const mem=recall(query);
+  const f=mem&&state.freq[productKey(mem)];
   return f&&f.lastGrams?f.lastGrams:100;
 }
 
 // ── FAVORIETEN (frequentie) ───────────────────────────────────────────────────
-function bumpFreq(query,item,grams){
+// Bijgehouden per product (zie productKey), niet per hoeveelheid — 40g havermout en 30g havermout
+// zijn dezelfde favoriet. lastGrams onthoudt wel de laatst gebruikte hoeveelheid als suggestie.
+function bumpFreq(item,grams){
   if(!state.freq)state.freq={};
-  const key=mk(query),f=state.freq[key];
-  state.freq[key]={count:(f?f.count:0)+1,item,lastGrams:grams,lastUsed:todayKey()};
+  const key=productKey(item),f=state.freq[key];
+  state.freq[key]={count:(f?f.count:0)+1,item,lastGrams:grams,lastUsed:todayKey(),pinned:f?f.pinned:false};
 }
 function daysSince(dateStr){
   if(!dateStr)return Infinity;
@@ -760,10 +822,10 @@ function topFavorites(n){
   return [...pinned,...freqBased].slice(0,n);
 }
 // Handmatig een favoriet vastzetten/losmaken (los van de automatische frequentie-drempel)
-function isFavorited(name){const f=state.freq[mk(name)];return!!(f&&f.pinned);}
+function isFavorited(item){const f=state.freq[productKey(item)];return!!(f&&f.pinned);}
 function toggleFavorite(idx){
   const log=getLog(currentDate),entry=log[idx];if(!entry||!entry._item)return;
-  const key=mk(entry.name),f=state.freq[key];
+  const key=productKey(entry._item),f=state.freq[key];
   if(f&&f.pinned){
     f.pinned=false;
     toast(`${entry.name} verwijderd uit favorieten`);
@@ -789,7 +851,7 @@ function quickAdd(fi){
   const grams=f.lastGrams||100;
   const log=getLog(currentDate);
   log.push(calcMacros(f.item,grams,activeMeal));
-  bumpFreq(f.key,f.item,grams);
+  bumpFreq(f.item,grams);
   save();render();
   toast(`${f.item.Voedingsmiddelnaam||f.item.name} toegevoegd aan ${activeMeal} ✓`);
 }
@@ -835,28 +897,26 @@ function renderLog(){
   else if(currentDate===shiftStr(today,-1))title.textContent='Gisteren';
   else if(currentDate===shiftStr(today,1))title.textContent='Morgen';
   else{const d=new Date(currentDate+'T12:00:00'),s=d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'});title.textContent=s.charAt(0).toUpperCase()+s.slice(1);}
+  cb.classList.toggle('hidden',!log.length);
   const groups={};MEALS.forEach(m=>groups[m]=[]);
   log.forEach((e,i)=>(groups[e.meal]||groups['Snack']).push({...e,_i:i}));
-  if(!log.length){
-    // Lege dag: toon toch alle maaltijdgroepen met kopieerknop
-    cb.classList.add('hidden');
-    el.innerHTML=MEALS.map(meal=>`
-      <div class="meal-group">
-        <div class="meal-group-hdr" data-meal="${meal}">
-          <span class="meal-group-name">${meal}</span>
-          <button class="btn-copy-meal" onclick="copyMealFromDay('${meal}')" title="Kopieer van andere dag">⎘</button>
-        </div>
-      </div>`).join('');
-    return;
-  }
-  cb.classList.remove('hidden');
-  let html='';
-  MEALS.forEach(meal=>{
-    const items=groups[meal];
-    const subT=items.reduce((a,e)=>{a.kcal+=e.kcal;a.eiwit=r1(a.eiwit+e.eiwit);a.vet=r1(a.vet+e.vet);a.koolhydraten=r1(a.koolhydraten+e.koolhydraten);return a;},{kcal:0,eiwit:0,vet:0,koolhydraten:0});
-    html+=`<div class="meal-group"><div class="meal-group-hdr" data-meal="${meal}"><span class="meal-group-name">${meal}</span>${items.length?`<span class="meal-group-kcal">${subT.kcal} kcal</span>`:''}<button class="btn-copy-meal" onclick="copyMealFromDay('${meal}')" title="Kopieer van andere dag">⎘</button></div>${items.length?`<div class="meal-group-sub">E ${subT.eiwit}g · KH ${subT.koolhydraten}g · V ${subT.vet}g</div>`:''}<div class="meal-group-items">`;
-    if(!items.length){html+='</div></div>';return;}
-    items.forEach(e=>{html+=`<div class="log-item">
+  el.innerHTML=MEALS.map(meal=>renderMealGroup(meal,groups[meal])).join('');
+}
+// Eén maaltijdblok: header (kcal + klachten-knop + kopieerknop), macro-subtotaal, evt. klachtenpaneel, items
+function renderMealGroup(meal,items){
+  const syms=getSymptoms(currentDate,meal);
+  const subT=items.length?sumMacros(items):null;
+  const hdr=`<div class="meal-group-hdr" data-meal="${meal}">
+      <span class="meal-group-name">${meal}</span>
+      ${subT?`<span class="meal-group-kcal">${subT.kcal} kcal</span>`:''}
+      <button class="btn-sym${syms.length?' active':''}" onclick="toggleSymPanel('${meal}')" title="${syms.length?'Klachten: '+esc(syms.join(', ')):'Klachten registreren'}">⚠</button>
+      <button class="btn-copy-meal" onclick="copyMealFromDay('${meal}')" title="Kopieer van andere dag">⎘</button>
+    </div>`;
+  const sub=subT?`<div class="meal-group-sub">${macroBadges(subT,true)}</div>`:'';
+  const panel=symptomPanelOpen===meal?renderSymPanel(meal,syms):'';
+  const rows=items.map(e=>{
+    const fav=isFavorited(e._item);
+    return `<div class="log-item">
       <div class="log-info"><div class="log-name">${esc(e.name)}</div>
         <div class="log-sub">
           <button class="log-grams-btn" onclick="startEditGrams(${e._i})" id="gbtn-${e._i}">${e.grams}g</button>
@@ -864,18 +924,44 @@ function renderLog(){
             onblur="commitGrams(${e._i})" onkeydown="gramsKey(event,${e._i})">
         </div></div>
       <div class="log-right"><div class="log-kcal">${e.kcal} kcal</div>
-        <div class="log-macros">E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g</div></div>
+        <div class="log-macros">${macroBadges(e)}</div></div>
       <select class="move-select" title="Verplaats naar..." onchange="moveEntry(${e._i},this.value)">
         ${MEALS.map(m=>`<option value="${m}"${m===meal?' selected':''}>${m}</option>`).join('')}
       </select>
-      <button class="log-fav${isFavorited(e.name)?' active':''}" onclick="toggleFavorite(${e._i})" title="${isFavorited(e.name)?'Verwijder uit favorieten':'Voeg toe aan favorieten'}">${isFavorited(e.name)?'★':'☆'}</button>
+      <button class="log-fav${fav?' active':''}" onclick="toggleFavorite(${e._i})" title="${fav?'Verwijder uit favorieten':'Voeg toe aan favorieten'}">${fav?'★':'☆'}</button>
       <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>
-    </div>`;});
-    html+='</div></div>';
-  });
-  el.innerHTML=html;
+    </div>`;
+  }).join('');
+  return `<div class="meal-group">${hdr}${sub}${panel}<div class="meal-group-items">${rows}</div></div>`;
+}
+// Compacte gekleurde badges voor E/KH/V — vaste kleur per macro, groter/vetter op maaltijd-totaalniveau
+function macroBadges(m,big){
+  const cls=big?' total':'';
+  return `<span class="macro-badge e${cls}">E ${m.eiwit}g</span> <span class="macro-badge kh${cls}">KH ${m.koolhydraten}g</span> <span class="macro-badge v${cls}">V ${m.vet}g</span>`;
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── FODMAP: KLACHTEN PER MAALTIJD ──────────────────────────────────────────────
+function getSymptoms(d,meal){
+  return (state.symptoms&&state.symptoms[d]&&state.symptoms[d][meal])||[];
+}
+function toggleSymPanel(meal){
+  symptomPanelOpen=symptomPanelOpen===meal?null:meal;
+  renderLog();
+}
+function toggleSymptom(meal,symptom){
+  if(!state.symptoms)state.symptoms={};
+  if(!state.symptoms[currentDate])state.symptoms[currentDate]={};
+  const list=state.symptoms[currentDate][meal]||[];
+  const next=list.includes(symptom)?list.filter(s=>s!==symptom):[...list,symptom];
+  if(next.length)state.symptoms[currentDate][meal]=next;
+  else delete state.symptoms[currentDate][meal];
+  if(!Object.keys(state.symptoms[currentDate]).length)delete state.symptoms[currentDate];
+  save();renderLog();
+}
+function renderSymPanel(meal,syms){
+  return `<div class="sym-panel">${SYMPTOMS.map(s=>`<button class="sym-chip${syms.includes(s)?' active':''}" onclick="toggleSymptom('${meal}','${s}')">${esc(s)}</button>`).join('')}</div>`;
+}
 
 // ── GRAM EDIT ────────────────────────────────────────────────────────────────
 function startEditGrams(idx){document.getElementById(`gbtn-${idx}`).classList.add('hidden');const i=document.getElementById(`gedit-${idx}`);i.classList.remove('hidden');i.focus();i.select();}
@@ -1136,7 +1222,7 @@ function confirmAll(){
         }
       }
     }
-    if(nevoItem){log.push(calcMacros(nevoItem,item.grams,activeMeal));remember(item.query,nevoItem);bumpFreq(item.query,nevoItem,item.grams);added++;}
+    if(nevoItem){log.push(calcMacros(nevoItem,item.grams,activeMeal));remember(item.query,nevoItem);bumpFreq(nevoItem,item.grams);added++;}
   }
   pending=[];save();render();renderPending();
   if(added)toast(`${added} item${added>1?'s':''} toegevoegd ✓`);
@@ -1177,8 +1263,8 @@ function copyMealFromDay(meal){
 
 // ── DATE ─────────────────────────────────────────────────────────────────────
 function shiftStr(d,n){const dt=new Date(d+'T12:00:00');dt.setDate(dt.getDate()+n);return dt.toLocaleDateString('sv-SE');}
-function shiftDay(n){currentDate=shiftStr(currentDate,n);pending=[];renderPending();render();}
-function setDate(v){if(v){currentDate=v;pending=[];renderPending();render();}}
+function shiftDay(n){currentDate=shiftStr(currentDate,n);pending=[];symptomPanelOpen=null;renderPending();render();}
+function setDate(v){if(v){currentDate=v;pending=[];symptomPanelOpen=null;renderPending();render();}}
 function setMeal(m){activeMeal=m;renderMealTabs();}
 
 // ── MODAL ────────────────────────────────────────────────────────────────────
@@ -1195,7 +1281,13 @@ function setModalTab(tab){
   ['goals','custom','data'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));
   document.querySelectorAll('.modal-tab').forEach((btn,i)=>btn.classList.toggle('active',['goals','custom','data'][i]===tab));
   if(tab==='custom')renderCustomList();
-  if(tab==='data')renderSyncUI();
+  if(tab==='data'){renderSyncUI();initFodmapDates();}
+}
+// Vult de periode-velden alleen als ze nog leeg zijn, zodat een eerder gekozen periode blijft staan
+function initFodmapDates(){
+  const s=document.getElementById('fodmap-start'),e=document.getElementById('fodmap-end');
+  if(s&&!s.value)s.value=shiftStr(todayKey(),-6);
+  if(e&&!e.value)e.value=todayKey();
 }
 
 // ── GOALS ────────────────────────────────────────────────────────────────────
@@ -1301,11 +1393,77 @@ function importData(){
           else cur.pinned=!!(cur.pinned||v.pinned);
         });
         Object.keys(imp.logs||{}).forEach(d=>{if(!merged.logs[d])merged.logs[d]=imp.logs[d];});
+        if(!merged.symptoms)merged.symptoms={};
+        Object.keys(imp.symptoms||{}).forEach(d=>{merged.symptoms[d]={...(merged.symptoms[d]||{}),...(imp.symptoms[d]||{})};});
         state=merged;customFuse=null;save();render();toast('Data geïmporteerd ✓');
       }catch(e){toast('Fout bij importeren');}
     };reader.readAsText(file);
   };inp.click();
 }
+// ── FODMAP PDF ───────────────────────────────────────────────────────────────
+// jsPDF wordt pas geladen op het moment dat er echt een PDF gevraagd wordt (niet bij opstarten),
+// zodat de app zelf klein en snel blijft laden.
+function loadJsPDF(){
+  return new Promise((resolve,reject)=>{
+    if(window.jspdf){resolve();return;}
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=()=>resolve();s.onerror=()=>reject(new Error('kon niet laden'));
+    document.head.appendChild(s);
+  });
+}
+function formatDateLabel(d){
+  const dt=new Date(d+'T12:00:00'),s=dt.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  return s.charAt(0).toUpperCase()+s.slice(1);
+}
+async function exportFodmapPdf(){
+  const start=(document.getElementById('fodmap-start')||{}).value;
+  const end=(document.getElementById('fodmap-end')||{}).value;
+  if(!start||!end){toast('Kies een start- en einddatum');return;}
+  if(start>end){toast('Startdatum moet voor de einddatum liggen');return;}
+  const days=[];
+  for(let d=start;d<=end;d=shiftStr(d,1))days.push(d);
+  if(days.length>93){toast('Kies een kortere periode (max. ~3 maanden)');return;}
+  toast('PDF genereren…');
+  try{ await loadJsPDF(); }catch(e){ toast('❌ Kon PDF-bibliotheek niet laden — check je internetverbinding'); return; }
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'pt'});
+  const pageH=doc.internal.pageSize.getHeight();
+  const marginL=40,marginTop=50,lineH=14;
+  let y=marginTop;
+  function ensureSpace(need){ if(y+need>pageH-40){doc.addPage();y=marginTop;} }
+  function line(text,opts){
+    opts=opts||{};
+    doc.setFont(undefined,opts.bold?'bold':'normal');
+    doc.setFontSize(opts.size||10);
+    ensureSpace(lineH);
+    doc.text(text,marginL,y);
+    y+=lineH;
+  }
+  doc.setFontSize(16);doc.setFont(undefined,'bold');doc.text('FODMAP-dagboek',marginL,y);y+=22;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');doc.text(`Periode: ${start} t/m ${end}`,marginL,y);y+=22;
+
+  days.forEach(d=>{
+    ensureSpace(30);
+    const log=state.logs[d]||[];
+    line(formatDateLabel(d),{bold:true,size:12});
+    if(!log.length){line('Geen items gelogd.');y+=8;return;}
+    MEALS.forEach(meal=>{
+      const items=log.filter(e=>e.meal===meal);
+      if(!items.length)return;
+      line(meal,{bold:true,size:11});
+      items.forEach(e=>line(`  ${e.name} — ${e.grams}g — ${e.kcal} kcal (E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g)`));
+      const syms=getSymptoms(d,meal);
+      if(syms.length)line(`  Klachten: ${syms.join(', ')}`);
+    });
+    const dayT=sumMacros(log);
+    y+=2;line(`Totaal: ${dayT.kcal} kcal · E ${dayT.eiwit}g · KH ${dayT.koolhydraten}g · V ${dayT.vet}g`,{bold:true});
+    y+=10;
+  });
+  doc.save(`fodmap-dagboek-${start}_${end}.pdf`);
+  toast('PDF gedownload ✓');
+}
+
 function resetAll(){
   if(!confirm('Weet je zeker dat je ALLE data wilt wissen? Dit kan niet ongedaan worden gemaakt.'))return;
   state=defaultState();save();render();closeModal();toast('Data gewist');
