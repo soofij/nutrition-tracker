@@ -358,7 +358,7 @@
   <div id="log-list"></div>
   <div class="day-note">
     <textarea id="day-note-input" rows="2" placeholder="Klachten vandaag? Beschrijf hier wanneer je wat merkte…"
-      oninput="autoResize(this)" onblur="saveDayNote()"></textarea>
+      oninput="autoResize(this)" onblur="saveDayNote()" onkeydown="noteKey(event)"></textarea>
   </div>
 </div>
 
@@ -1095,7 +1095,7 @@ function renderDayNote(){
   const ind=document.getElementById('note-indicator');
   if(ind){ind.classList.toggle('hidden',!note);ind.title=note?('Notitie: '+note.slice(0,80)):'';}
 }
-function saveDayNote(){
+function saveDayNote(showToast){
   const ta=document.getElementById('day-note-input');if(!ta)return;
   const val=ta.value.trim();
   if(!state.symptomNotes)state.symptomNotes={};
@@ -1103,6 +1103,10 @@ function saveDayNote(){
   save();
   const ind=document.getElementById('note-indicator');
   if(ind){ind.classList.toggle('hidden',!val);ind.title=val?('Notitie: '+val.slice(0,80)):'';}
+  if(showToast)toast('Notitie opgeslagen ✓');
+}
+function noteKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveDayNote(true);}
 }
 
 // ── SELECTEREN: achteraf items groeperen tot een recept ──────────────────────
