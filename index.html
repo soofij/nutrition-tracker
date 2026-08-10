@@ -742,14 +742,29 @@ function copyGistId(){
 
 // ── SEARCH ───────────────────────────────────────────────────────────────────
 function initNevoFuse(){
-  if(!nevoFuse)nevoFuse=new Fuse(NEVO,{keys:[{name:'Voedingsmiddelnaam',weight:2},{name:'Synoniem',weight:1}],threshold:0.45});
+  if(!nevoFuse)nevoFuse=new Fuse(NEVO,{keys:[{name:'Voedingsmiddelnaam',weight:2},{name:'Synoniem',weight:1}],threshold:0.45,includeScore:true});
   return nevoFuse;
 }
-function initCustomFuse(){customFuse=new Fuse(state.custom,{keys:['name'],threshold:0.4});return customFuse;}
+function initCustomFuse(){customFuse=new Fuse(state.custom,{keys:['name'],threshold:0.4,includeScore:true});return customFuse;}
+// Combineert Fuse's tekst-score (lager=beter) met gebruiksfrequentie/recentheid uit state.freq,
+// zodat een product dat je vaak/recent gebruikt hoger komt te staan bij een vergelijkbare tekstmatch.
+function rankScore(item,fuseScore){
+  const f=state.freq[productKey(item)];
+  if(!f)return fuseScore;
+  const recency=Math.max(0,1-daysSince(f.lastUsed)/30);   // 1 = vandaag gebruikt, 0 = 30+ dagen geleden
+  const freqBoost=Math.min(f.count||0,10)/10;              // count 10+ = volledige boost
+  return Math.max(0,fuseScore-(0.15*freqBoost+0.15*recency)); // max 0.3 van de score afhalen
+}
 function searchAll(query,limit){
   limit=limit||3;
-  const cRes=state.custom.length?initCustomFuse().search(query,{limit:2}).map(r=>({...r.item,_type:'custom'})):[];
-  const nRes=initNevoFuse().search(query,{limit}).map(r=>({...r.item,_type:'nevo'}));
+  const custLimit=Math.min(2,limit); // eigen producten blijven gegarandeerd voorrang krijgen (max 2 slots), zoals voorheen
+  const poolSize=Math.max(limit*4,12); // ruimere kandidatenpool ophalen, dan binnen elke groep herordenen op freq
+  const cRes=state.custom.length?initCustomFuse().search(query,{limit:poolSize})
+    .map(r=>({...r.item,_type:'custom',_score:rankScore(r.item,r.score)}))
+    .sort((a,b)=>a._score-b._score).slice(0,custLimit):[];
+  const nRes=initNevoFuse().search(query,{limit:poolSize})
+    .map(r=>({...r.item,_type:'nevo',_score:rankScore(r.item,r.score)}))
+    .sort((a,b)=>a._score-b._score);
   return [...cRes,...nRes].slice(0,limit);
 }
 
@@ -913,15 +928,15 @@ function daysSince(dateStr){
   const d=new Date(dateStr+'T12:00:00'),now=new Date(todayKey()+'T12:00:00');
   return Math.round((now-d)/86400000);
 }
-function topFavorites(n){
-  n=n||6;
+function topFavorites(){
   // Zowel handmatig gepinde als automatisch-frequente favorieten vervagen na 30 dagen zonder gebruik
+  // Geen limiet meer op aantal — balk scrollt horizontaal (zie .fav-bar CSS) i.p.v. hard af te kappen
   const entries=Object.entries(state.freq||{}).filter(([,f])=>daysSince(f.lastUsed)<=30);
   const pinned=entries.filter(([,f])=>f.pinned).map(([key,f])=>({...f,key}));
   const freqBased=entries.filter(([,f])=>!f.pinned&&f.count>=2)
     .sort((a,b)=>b[1].count-a[1].count)
     .map(([key,f])=>({...f,key}));
-  return [...pinned,...freqBased].slice(0,n);
+  return [...pinned,...freqBased];
 }
 // Handmatig een favoriet vastzetten/losmaken (los van de automatische frequentie-drempel)
 function isFavorited(item){const f=state.freq[productKey(item)];return!!(f&&f.pinned);}
