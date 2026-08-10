@@ -525,7 +525,6 @@ let pending = [];
 let currentDate = todayKey();
 let activeMeal = 'Ontbijt';
 let goalMode = 'gram';
-let offDebounce = null;
 let expandedRecipes = new Set();   // welke recept-regels (log-index) uitgeklapt staan
 let selectMode = false;            // "Selecteer"-modus om items achteraf tot een recept te maken
 let selectedIdx = new Set();
@@ -1224,14 +1223,10 @@ function renderPending(){
       inner=renderSearchPanel(item,pi);
     } else {
       const matches=item.matches||[];
-      if(!matches.length&&item.offLoading){
-        inner='<div class="search-loading"><div class="spinner"></div> Zoeken in Open Food Facts…</div>';
-      }else{
-        inner=(matches.length?matches.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')
-          :'<div class="search-empty">Geen resultaten.</div>');
-        inner+=`<div class="not-found-row"><span>Staat er niet tussen?</span>
-          <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Zoek / voeg toe</button></div>`;
-      }
+      inner=(matches.length?matches.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')
+        :'<div class="search-empty">Geen resultaten.</div>');
+      inner+=`<div class="not-found-row"><span>Staat er niet tussen?</span>
+        <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Zoek / voeg toe</button></div>`;
     }
     return `<div class="pend-item"><div class="pend-label">Jij typte: <strong>${esc(item.query)}</strong> ${gf}</div>${inner}</div>`;
   }).join('<div class="divider"></div>');
@@ -1244,15 +1239,7 @@ function renderSearchPanel(item,pi){
     content=`<input class="search-input" type="text" placeholder="Zoek in NEVO…" value="${esc(q)}"
       oninput="doNevoSearch(${pi},this.value)" onkeydown="if(event.key==='Enter')event.preventDefault()" id="si-${pi}">
       <div class="search-results">${results.length===0&&q
-        ?'<div class="search-empty">Niets gevonden. Probeer Open Food Facts.</div>'
-        :results.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')}</div>`;
-  } else if(src==='off'){
-    const q=item.offQuery||item.query,results=item.offResults||[],loading=item.offLoading||false;
-    content=`<input class="search-input" type="text" placeholder="Naam of barcodenummer…" value="${esc(q)}"
-      oninput="doOFFSearch(${pi},this.value)" onkeydown="if(event.key==='Enter')event.preventDefault()" id="si-off-${pi}">
-      <div class="search-results">${loading
-        ?'<div class="search-loading"><div class="spinner"></div> Zoeken…</div>'
-        :results.length===0&&q?'<div class="search-empty">Niets gevonden.</div>'
+        ?'<div class="search-empty">Niets gevonden. Voeg zelf toe via "Handmatig".</div>'
         :results.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')}</div>`;
   } else {
     content=`<div class="manual-form"><h4>Voeg eigen product toe</h4>
@@ -1271,14 +1258,13 @@ function renderSearchPanel(item,pi){
   return `<div class="search-panel">
     <div class="search-tabs">
       <button class="search-tab${src==='nevo'?' active':''}" onclick="setSearchSrc(${pi},'nevo')">NEVO</button>
-      <button class="search-tab${src==='off'?' active':''}" onclick="setSearchSrc(${pi},'off')">Open Food Facts</button>
       <button class="search-tab${src==='manual'?' active':''}" onclick="setSearchSrc(${pi},'manual')">Handmatig</button>
     </div>${content}</div>
     <button class="btn-ghost btn-sm" style="margin-top:8px" onclick="switchMode(${pi},'matches')">← Terug</button>`;
 }
 
 function matchCardHtml(item,pi,mi,sel){
-  const isC=item._type==='custom'||item._type==='off';
+  const isC=item._type==='custom';
   const kcal=isC?item.kcal:fv(item.kcal),eiwit=isC?item.eiwit:fv(item['Eiwit (g)']);
   const kh=isC?item.koolhydraten:fv(item['Koolhydraten (g)']),vet=isC?item.vet:fv(item['Vet (g)']);
   const name=isC?item.name:item.Voedingsmiddelnaam;
@@ -1300,60 +1286,11 @@ function switchMode(pi,mode){
 function setSearchSrc(pi,src){
   pending[pi].searchSource=src;pending[pi].selIdx=-1;
   if(src==='nevo')pending[pi].searchResults=searchAll(pending[pi].searchQuery||pending[pi].query,8);
-  else if(src==='off'){pending[pi].offResults=[];pending[pi].offQuery=pending[pi].query;pending[pi].offLoading=false;}
   renderPending();
-  if(src==='off')setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.select();}},50);
 }
 function doNevoSearch(pi,val){
   pending[pi].searchQuery=val;pending[pi].searchResults=val.trim()?searchAll(val,8):[];pending[pi].selIdx=-1;
   renderPending();setTimeout(()=>{const e=document.getElementById(`si-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
-}
-function doOFFSearch(pi,val){
-  pending[pi].offQuery=val;pending[pi].selIdx=-1;clearTimeout(offDebounce);
-  if(!val.trim()){pending[pi].offResults=[];renderPending();return;}
-  pending[pi].offLoading=true;renderPending();
-  setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
-  offDebounce=setTimeout(()=>fetchOFF(pi,val),600);
-}
-async function fetchOFF(pi,query,isAutoFallback){
-  try{
-    let results=[];
-    if(/^\d{8,14}$/.test(query.trim())){
-      const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${query.trim()}.json`);
-      const data=await res.json();
-      if(data.status===1&&data.product){const item=offToItem(data.product);if(item)results=[item];}
-    }else{
-      // Gebruik v2 API — betrouwbaarder dan cgi/search.pl voor tekst-zoekopdrachten
-      const res=await fetch(`https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(query)}&page_size=12&fields=product_name,brands,nutriments,code,countries_tags&sort_by=unique_scans_n`);
-      const data=await res.json();
-      const all=(data.products||[]).map(offToItem).filter(Boolean);
-      // Sorteer: Nederlandse/Belgische producten eerst
-      results=all.sort((a,b)=>(b._nl?1:0)-(a._nl?1:0)).slice(0,8);
-    }
-    if(pi!==null&&pending[pi]){
-      pending[pi].offResults=results;
-      // Auto-fallback: als gevonden, toon direct; anders geen actie
-      if(isAutoFallback&&results.length>0){
-        pending[pi].mode='search';pending[pi].searchSource='off';
-        pending[pi].offQuery=query;pending[pi].selIdx=0;
-      }
-    }
-  }catch(e){if(pi!==null&&pending[pi])pending[pi].offResults=[];}
-  if(pi!==null&&pending[pi]){
-    pending[pi].offLoading=false;renderPending();
-    if(!isAutoFallback)setTimeout(()=>{const e=document.getElementById(`si-off-${pi}`);if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},10);
-  }
-}
-function offToItem(p){
-  if(!p||!p.nutriments)return null;
-  const n=p.nutriments,kcal=n['energy-kcal_100g']||(n['energy_100g']||0)/4.184;
-  const name=[p.product_name,p.brands].filter(Boolean).join(' — ').trim();
-  if(!name||!kcal)return null;
-  const isNl=(p.countries_tags||[]).some(t=>t==='en:netherlands'||t==='en:belgium');
-  return{_type:'off',_nl:isNl,name,kcal:Math.round(kcal),eiwit:r1(n['proteins_100g']||0),
-    koolhydraten:r1(n['carbohydrates_100g']||0),vet:r1(n['fat_100g']||0),
-    Voedingsmiddelnaam:name,'Eiwit (g)':n['proteins_100g']||0,'Vet (g)':n['fat_100g']||0,
-    'Koolhydraten (g)':n['carbohydrates_100g']||0,offId:p.code||''};
 }
 function selectMatch(pi,mi){pending[pi].selIdx=mi;renderPending();}
 function resolveUnitAsk(pi){
@@ -1368,10 +1305,6 @@ function resolveUnitAsk(pi){
   else{
     const matches=searchAll(query);
     pending[pi]={...item,grams,mode:'matches',memory:null,matches,selIdx:matches.length?0:-1,searchResults:[]};
-    if(!matches.length){
-      pending[pi].offResults=[];pending[pi].offLoading=true;pending[pi].offQuery=query;
-      setTimeout(()=>fetchOFF(pi,query,true),0);
-    }
   }
   renderPending();
 }
@@ -1417,11 +1350,6 @@ function handleAdd(){
     if(mem)return{...item,mode:'memory',memory:mem,matches:[],selIdx:-1,searchResults:[]};
     const matches=searchAll(item.query);
     const pend={...item,mode:'matches',memory:null,matches,selIdx:matches.length?0:-1,searchResults:[]};
-    // Auto-fallback naar OFF als NEVO niets vindt
-    if(!matches.length){
-      pend.offResults=[];pend.offLoading=true;pend.offQuery=item.query;
-      setTimeout(()=>fetchOFF(pi,item.query,true),0);
-    }
     return pend;
   });
   inp.value='';inp.style.height='';renderPending();
@@ -1447,12 +1375,6 @@ function confirmAll(){
     else if(item.mode==='search'){
       const src=item.searchSource;
       if(src==='nevo'&&item.selIdx>=0)nevoItem=item.searchResults[item.selIdx];
-      else if(src==='off'&&item.selIdx>=0){
-        nevoItem=item.offResults[item.selIdx];
-        if(nevoItem&&!state.custom.find(c=>c.offId===nevoItem.offId)){
-          state.custom.push({...nevoItem,_type:'custom',source:'off',id:Date.now()});customFuse=null;
-        }
-      }
     }
     if(nevoItem){log.push(calcMacros(nevoItem,item.grams,activeMeal));remember(item.query,nevoItem);bumpFreq(nevoItem,item.grams);added++;}
   }
