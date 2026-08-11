@@ -63,10 +63,10 @@
     .meal-tab[data-meal="Diner"].active{background:#6366f1}
     .meal-tab[data-meal="Snack"].active{background:#ec4899}
 
-    .fav-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px}
+    .fav-bar{display:flex;flex-wrap:wrap;gap:6px 5px;margin-bottom:10px;padding-bottom:2px}
     .fav-bar::-webkit-scrollbar{display:none}
     .fav-btn{flex-shrink:0;background:var(--surface);border:1.5px solid var(--border);
-      border-radius:20px;padding:6px 13px;font-size:13px;font-weight:500;color:var(--fg);
+      border-radius:16px;padding:4px 10px;font-size:12.5px;font-weight:500;color:var(--fg);
       font-family:inherit;white-space:nowrap;cursor:pointer;transition:border-color .15s,color .15s}
     .fav-btn:hover{border-color:var(--accent);color:var(--accent)}
 
@@ -180,8 +180,9 @@
     .btn-copy-meal{background:none;border:none;cursor:pointer;font-size:15px;opacity:.45;padding:0 0 0 6px;line-height:1;transition:opacity .15s}
     .btn-copy-meal:hover{opacity:.85}
     .meal-group-sub{font-size:11px;color:var(--muted);padding:2px 11px 6px}
-    .macro-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:3px;vertical-align:middle}
-    .macro-dot.total{width:7px;height:7px}
+    .macro-dot{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;
+      margin-right:3px;vertical-align:middle;font-size:8px;font-weight:700;color:#fff;line-height:1}
+    .macro-dot.total{width:15px;height:15px;font-size:9px}
     .macro-val{font-size:11.5px;color:var(--muted);margin-right:7px}
     .macro-val:last-child{margin-right:0}
     .macro-val.total{font-size:12.5px;font-weight:700;color:var(--fg)}
@@ -927,15 +928,17 @@ function daysSince(dateStr){
   const d=new Date(dateStr+'T12:00:00'),now=new Date(todayKey()+'T12:00:00');
   return Math.round((now-d)/86400000);
 }
+const MAX_FAVS=12; // balk wrapt naar meerdere rijen (zie .fav-bar CSS) i.p.v. horizontaal scrollen, dus begrensd zodat alles in 1x zichtbaar blijft
 function topFavorites(){
   // Zowel handmatig gepinde als automatisch-frequente favorieten vervagen na 30 dagen zonder gebruik
-  // Geen limiet meer op aantal — balk scrollt horizontaal (zie .fav-bar CSS) i.p.v. hard af te kappen
+  // Gepinde favorieten tellen altijd mee (bewuste keuze van Sophie); resterende plekken tot MAX_FAVS gaan naar de meest gebruikte
   const entries=Object.entries(state.freq||{}).filter(([,f])=>daysSince(f.lastUsed)<=30);
   const pinned=entries.filter(([,f])=>f.pinned).map(([key,f])=>({...f,key}));
   const freqBased=entries.filter(([,f])=>!f.pinned&&f.count>=2)
     .sort((a,b)=>b[1].count-a[1].count)
     .map(([key,f])=>({...f,key}));
-  return [...pinned,...freqBased];
+  const remaining=Math.max(0,MAX_FAVS-pinned.length);
+  return [...pinned,...freqBased.slice(0,remaining)];
 }
 // Handmatig een favoriet vastzetten/losmaken (los van de automatische frequentie-drempel)
 function isFavorited(item){const f=state.freq[productKey(item)];return!!(f&&f.pinned);}
@@ -1089,11 +1092,11 @@ function renderRecipeRow(e,meal){
     </div>${ingredients}`;
 }
 // Kleine gekleurde bolletjes vóór elk cijfer i.p.v. volle badges — rustiger en compacter.
-// Vaste volgorde (Eiwit/Koolhydraten/Vet) + kleur is genoeg om te onderscheiden, geen letters nodig.
+// Letter (E/K/V) in het bolletje zelf, zodat je niet hoeft te hoveren/tappen om te weten wat het is (mobielvriendelijk).
 function macroBadges(m,big){
   const cls=big?' total':'';
-  const dot=(color,val,label)=>`<span class="macro-dot${cls}" style="background:${color}" title="${label}: ${val}g"></span><span class="macro-val${cls}">${val}g</span>`;
-  return dot(MACRO_COLORS.eiwit,m.eiwit,'Eiwit')+dot(MACRO_COLORS.koolhydraten,m.koolhydraten,'Koolhydraten')+dot(MACRO_COLORS.vet,m.vet,'Vet');
+  const dot=(color,letter,val,label)=>`<span class="macro-dot${cls}" style="background:${color}" title="${label}: ${val}g">${letter}</span><span class="macro-val${cls}">${val}g</span>`;
+  return dot(MACRO_COLORS.eiwit,'E',m.eiwit,'Eiwit')+dot(MACRO_COLORS.koolhydraten,'K',m.koolhydraten,'Koolhydraten')+dot(MACRO_COLORS.vet,'V',m.vet,'Vet');
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function toggleRecipeExpand(idx){
