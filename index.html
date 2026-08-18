@@ -69,6 +69,17 @@
       border-radius:16px;padding:4px 10px;font-size:12.5px;font-weight:500;color:var(--fg);
       font-family:inherit;white-space:nowrap;cursor:pointer;transition:border-color .15s,color .15s}
     .fav-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .fav-portion{color:var(--muted);font-weight:400;margin-left:2px}
+
+    .portion-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .portion-info{font-size:12px;color:var(--muted)}
+    .portion-field{margin-left:2px}
+    .portion-link{background:none;border:none;color:var(--accent);font-family:inherit;
+      font-size:12px;font-weight:500;cursor:pointer;padding:2px 0}
+    .log-portion{color:var(--muted);font-size:14px;padding:4px 2px;cursor:pointer;
+      background:none;border:none;border-radius:4px;opacity:.4;line-height:1}
+    .log-portion:hover{opacity:1}
+    .log-portion.active{opacity:1;color:var(--accent)}
 
     .input-hint{font-size:12px;color:var(--muted);margin-bottom:8px}
     .input-row{display:flex;gap:8px;margin-bottom:22px}
@@ -140,11 +151,6 @@
     .search-input{width:100%;border:1.5px solid var(--accent);border-radius:var(--r);
       padding:10px 13px;font-family:inherit;font-size:14px;outline:none;margin-bottom:6px}
     .search-empty{font-size:13px;color:var(--muted);padding:8px 0}
-    .search-loading{font-size:13px;color:var(--muted);padding:8px 0;
-      display:flex;align-items:center;gap:6px}
-    .spinner{width:14px;height:14px;border:2px solid var(--border);
-      border-top-color:var(--accent);border-radius:50%;
-      animation:spin .6s linear infinite;flex-shrink:0}
     .manual-form{background:var(--surface);border-radius:var(--r);padding:14px;margin-top:4px}
     .manual-form h4{font-size:13px;font-weight:600;margin-bottom:12px}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
@@ -425,7 +431,7 @@
             <input class="form-input" id="rb-search" type="text" placeholder="Zoeken…" oninput="rbSearch(this.value)"></div>
         </div>
         <div id="rb-results"></div>
-        <button class="btn-ghost btn-sm" id="rb-manual-toggle" onclick="rbToggleManual()" style="margin:4px 0 12px">+ Handmatig ingrediënt toevoegen</button>
+        <button class="btn-ghost btn-sm" onclick="rbToggleManual()" style="margin:4px 0 12px">+ Handmatig ingrediënt toevoegen</button>
         <div id="rb-manual" class="hidden"></div>
         <div id="rb-ingredients" style="margin-bottom:6px"></div>
         <div class="form-actions">
@@ -453,7 +459,7 @@
             placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
             autocomplete="off" autocorrect="off" spellcheck="false">
         </div>
-        <div class="sync-field" id="gist-id-field">
+        <div class="sync-field">
           <div class="sync-label">Gist ID <span style="font-weight:400;color:var(--muted)">(leeg laten om automatisch aan te maken)</span></div>
           <input class="sync-input" id="sync-gist-id" type="text"
             placeholder="Wordt automatisch aangemaakt"
@@ -509,6 +515,25 @@
   </div>
 </div>
 
+<!-- Portie-modal: vaste portie instellen (bv. "1 cracker = 8g") voor een product -->
+<div class="overlay hidden" id="portion-modal" onclick="closePortionModalOutside(event)">
+  <div class="modal" style="max-width:340px">
+    <h3 style="margin:0 0 4px">Vaste portie</h3>
+    <div class="data-desc" style="margin-bottom:14px" id="portion-modal-sub"></div>
+    <div class="form-row">
+      <div class="form-field"><div class="form-label">Naam (bv. cracker)</div>
+        <input class="form-input" id="pm-label" type="text" placeholder="bijv. cracker"></div>
+      <div class="form-field"><div class="form-label">Gram per portie</div>
+        <input class="form-input" id="pm-grams" type="number" min="0.1" step="0.1" placeholder="bijv. 8"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-ghost" onclick="closePortionModal()">Annuleer</button>
+      <button class="btn-ghost" style="color:var(--red)" id="pm-delete" onclick="deletePortionModal()">Verwijderen</button>
+      <button class="btn-blue" onclick="savePortionModal()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -532,7 +557,7 @@ let selectedIdx = new Set();
 let recipeBuilder = null;          // {id, name, ingredients:[{item,grams}], searchResults, manualMode} tijdens aanmaken/bewerken
 
 function defaultState() {
-  return {goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[],freq:{},recipes:[],symptomNotes:{}};
+  return {goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[],freq:{},recipes:[],symptomNotes:{},portions:{}};
 }
 function loadState() {
   try { const s=localStorage.getItem(STORAGE_KEY); if(s) return ensureFields(JSON.parse(s)); } catch(e){}
@@ -540,7 +565,7 @@ function loadState() {
 }
 function ensureFields(s){
   if(!s.custom)s.custom=[];if(!s.memory)s.memory={};if(!s.logs)s.logs={};if(!s.goals)s.goals=defaultState().goals;
-  if(!s.freq)s.freq={};if(!s.recipes)s.recipes=[];if(!s.symptomNotes)s.symptomNotes={};
+  if(!s.freq)s.freq={};if(!s.recipes)s.recipes=[];if(!s.symptomNotes)s.symptomNotes={};if(!s.portions)s.portions={};
   s.freq=migrateFreq(s.freq);
   migrateSymptomNotes(s);
   return s;
@@ -583,6 +608,17 @@ function productKey(item){
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));pushToGist();}
 function todayKey(){return new Date().toLocaleDateString('sv-SE');}
 function getLog(d){if(!state.logs[d])state.logs[d]=[];return state.logs[d];}
+
+// ── VASTE PORTIES PER PRODUCT ─────────────────────────────────────────────────
+// 1x instellen wat 1 portie/stuk van een specifiek product weegt (bv. "1 cracker = 8g"),
+// zodat je daarna niet steeds hoeft op te zoeken hoeveel gram dat is. Losstaand van de generieke
+// UNIT_TABLE (die geldt voor alle producten samen, bv. "1 ei"); dit is per product (via productKey).
+function portionFor(item){return item?state.portions[productKey(item)]||null:null;}
+function savePortionFor(item,label,grams){
+  if(!item||!label||!grams||grams<=0)return false;
+  state.portions[productKey(item)]={label,grams:r1(grams)};save();return true;
+}
+function deletePortionFor(item){if(!item)return;delete state.portions[productKey(item)];save();}
 
 // ── SYNC ─────────────────────────────────────────────────────────────────────
 function getSyncCfg(){try{const s=localStorage.getItem(SYNC_KEY);if(s)return JSON.parse(s);}catch(e){}return null;}
@@ -688,6 +724,8 @@ function mergeState(remote){
     if(!loc)state.symptomNotes[d]=rem;
     else if(rem&&rem!==loc)state.symptomNotes[d]=loc+' / '+rem;
   });
+  if(!state.portions)state.portions={};
+  state.portions={...state.portions,...(remote.portions||{})};
 }
 
 async function manualRefresh(){
@@ -929,6 +967,9 @@ function daysSince(dateStr){
   return Math.round((now-d)/86400000);
 }
 const MAX_FAVS=12; // balk wrapt naar meerdere rijen (zie .fav-bar CSS) i.p.v. horizontaal scrollen, dus begrensd zodat alles in 1x zichtbaar blijft
+// Vaste hoeveelheid waarmee een favoriet via de snelkeuzebalk wordt toegevoegd — voorkomt dat
+// hetzelfde product met wisselende hoeveelheden als "dubbele" favoriet aanvoelt (Sophie's verzoek)
+const FAV_PORTION_GRAMS=100;
 function topFavorites(){
   // Zowel handmatig gepinde als automatisch-frequente favorieten vervagen na 30 dagen zonder gebruik
   // Gepinde favorieten tellen altijd mee (bewuste keuze van Sophie); resterende plekken tot MAX_FAVS gaan naar de meest gebruikte
@@ -938,7 +979,18 @@ function topFavorites(){
     .sort((a,b)=>b[1].count-a[1].count)
     .map(([key,f])=>({...f,key}));
   const remaining=Math.max(0,MAX_FAVS-pinned.length);
-  return [...pinned,...freqBased.slice(0,remaining)];
+  return dedupeFavsByName([...pinned,...freqBased.slice(0,remaining)]);
+}
+// Voorkomt dat hetzelfde product 2x in de balk staat (bv. ooit via NEVO én via "Handmatig" toegevoegd
+// onder dezelfde naam) — houdt per naam de gepinde, of anders de vaakst gebruikte, entry
+function dedupeFavsByName(favs){
+  const byName=new Map();
+  favs.forEach(f=>{
+    const name=mk(f.item.Voedingsmiddelnaam||f.item.name||'');
+    const cur=byName.get(name);
+    if(!cur||(f.pinned&&!cur.pinned)||(!!f.pinned===!!cur.pinned&&(f.count||0)>(cur.count||0)))byName.set(name,f);
+  });
+  return favs.filter(f=>byName.get(mk(f.item.Voedingsmiddelnaam||f.item.name||''))===f);
 }
 // Handmatig een favoriet vastzetten/losmaken (los van de automatische frequentie-drempel)
 function isFavorited(item){const f=state.freq[productKey(item)];return!!(f&&f.pinned);}
@@ -961,13 +1013,15 @@ function renderFavBar(){
   if(!favs.length){bar.classList.add('hidden');bar.innerHTML='';return;}
   bar.classList.remove('hidden');
   bar.innerHTML=favs.map((f,fi)=>
-    `<button class="fav-btn" onclick="quickAdd(${fi})">${esc(f.item.Voedingsmiddelnaam||f.item.name)}</button>`).join('');
+    `<button class="fav-btn" onclick="quickAdd(${fi})">${esc(f.item.Voedingsmiddelnaam||f.item.name)}<span class="fav-portion">${FAV_PORTION_GRAMS}g</span></button>`).join('');
   bar._favs=favs;
 }
+// Favorieten worden altijd met een vaste portie toegevoegd (FAV_PORTION_GRAMS) — niet meer met de
+// laatst gebruikte hoeveelheid. Hoeveelheid is daarna gewoon aan te passen in het dagoverzicht.
 function quickAdd(fi){
   const favs=document.getElementById('fav-bar')._favs||[];
   const f=favs[fi];if(!f)return;
-  const grams=f.lastGrams||100;
+  const grams=FAV_PORTION_GRAMS;
   const log=getLog(currentDate);
   log.push(calcMacros(f.item,grams,activeMeal));
   bumpFreq(f.item,grams);
@@ -1053,11 +1107,14 @@ function renderMealGroup(meal,items){
 }
 function renderItemRow(e,meal){
   const fav=isFavorited(e._item);
+  const port=portionFor(e._item);
+  const portTitle=port?`Vaste portie: 1 ${port.label} = ${port.grams}g (klik om te wijzigen)`:'Vaste portie instellen';
   const check=selectMode?`<input class="select-check" type="checkbox" ${selectedIdx.has(e._i)?'checked':''} onchange="toggleSelectItem(${e._i})">`:'';
   const actions=selectMode?'':`<select class="move-select" title="Verplaats naar..." onchange="moveEntry(${e._i},this.value)">
         ${MEALS.map(m=>`<option value="${m}"${m===meal?' selected':''}>${m}</option>`).join('')}
       </select>
       <button class="log-fav${fav?' active':''}" onclick="toggleFavorite(${e._i})" title="${fav?'Verwijder uit favorieten':'Voeg toe aan favorieten'}">${fav?'★':'☆'}</button>
+      <button class="log-portion${port?' active':''}" onclick="openPortionModalForLog(${e._i})" title="${esc(portTitle)}">⚖</button>
       <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>`;
   return `<div class="log-item">
       ${check}
@@ -1219,8 +1276,16 @@ function renderPending(){
     let inner='';
     if(item.mode==='memory'){
       const mem=item.memory,p=calcMacros(mem,item.grams,activeMeal);
+      const portion=portionFor(mem);
+      const portionRow=`<div class="portion-row">${portion
+        ?`<span class="portion-info">1 ${esc(portion.label)} = ${portion.grams}g</span>
+           <span class="grams-field portion-field"><input class="grams-inp" type="number" min="0" step="0.5" placeholder="aantal" oninput="updPortionQty(${pi},this.value)"><span class="grams-unit">× ${esc(portion.label)}</span></span>
+           <button class="portion-link" onclick="openPortionModal(pending[${pi}].memory)">✎ wijzig portie</button>`
+        :`<button class="portion-link" onclick="openPortionModal(pending[${pi}].memory)">+ Vaste portie instellen</button>`
+      }</div>`;
       inner=`<div class="mem-card"><div><div class="mem-name">${esc(mem.Voedingsmiddelnaam||mem.name)}</div>
-        <div class="mem-sub" id="msub-${pi}">${item.grams}g · ${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g</div></div>
+        <div class="mem-sub" id="msub-${pi}">${item.grams}g · ${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g</div>
+        ${portionRow}</div>
         <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'matches')">Iets anders</button></div>`;
     } else if(item.mode==='search'){
       inner=renderSearchPanel(item,pi);
@@ -1434,6 +1499,51 @@ function openModal(){
 }
 function closeModal(){document.getElementById('settings-modal').classList.add('hidden');}
 function closeModalOutside(e){if(e.target===document.getElementById('settings-modal'))closeModal();}
+
+// ── PORTIE-MODAL (vaste portie per product instellen) ─────────────────────────
+let portionModalCtx=null;
+function openPortionModal(item){
+  if(!item)return;
+  portionModalCtx={item};
+  const existing=portionFor(item);
+  document.getElementById('portion-modal-sub').textContent=item.Voedingsmiddelnaam||item.name||'';
+  document.getElementById('pm-label').value=existing?existing.label:'';
+  document.getElementById('pm-grams').value=existing?existing.grams:'';
+  document.getElementById('pm-delete').style.display=existing?'':'none';
+  document.getElementById('portion-modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('pm-label').focus(),50);
+}
+function closePortionModal(){document.getElementById('portion-modal').classList.add('hidden');portionModalCtx=null;}
+function closePortionModalOutside(e){if(e.target===document.getElementById('portion-modal'))closePortionModal();}
+function savePortionModal(){
+  if(!portionModalCtx)return;
+  const label=(document.getElementById('pm-label').value||'').trim();
+  const grams=parseFloat((document.getElementById('pm-grams').value||'').replace(',','.'));
+  if(!label||!grams||grams<=0){toast('Vul een naam en geldig gewicht in');return;}
+  savePortionFor(portionModalCtx.item,label,grams);
+  toast('Portie opgeslagen ✓');
+  closePortionModal();renderPending();render();
+}
+function deletePortionModal(){
+  if(!portionModalCtx)return;
+  deletePortionFor(portionModalCtx.item);
+  toast('Portie verwijderd');
+  closePortionModal();renderPending();render();
+}
+function openPortionModalForLog(idx){
+  const entry=getLog(currentDate)[idx];if(!entry||!entry._item)return;
+  openPortionModal(entry._item);
+}
+// Zet het aantal-porties-veld om naar gram in het bevestig-scherm (bv. "3" × cracker à 8g = 24g)
+function updPortionQty(pi,val){
+  const item=pending[pi];if(!item||item.mode!=='memory')return;
+  const portion=portionFor(item.memory);if(!portion)return;
+  const n=parseFloat((val||'').replace(',','.'));if(!n||n<=0)return;
+  const grams=r1(n*portion.grams);
+  item.grams=grams;
+  const ginp=document.getElementById(`pg-${pi}`);if(ginp)ginp.value=grams;
+  updPG(pi,grams);
+}
 function setModalTab(tab){
   ['goals','custom','recipes','data'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));
   document.querySelectorAll('.modal-tab').forEach((btn,i)=>btn.classList.toggle('active',['goals','custom','recipes','data'][i]===tab));
@@ -1720,6 +1830,8 @@ function importData(){
           if(!loc)merged.symptomNotes[d]=rem;
           else if(rem&&rem!==loc)merged.symptomNotes[d]=loc+' / '+rem;
         });
+        if(!merged.portions)merged.portions={};
+        merged.portions={...merged.portions,...(imp.portions||{})};
         state=merged;customFuse=null;save();render();toast('Data geïmporteerd ✓');
       }catch(e){toast('Fout bij importeren');}
     };reader.readAsText(file);
