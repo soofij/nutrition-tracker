@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nutrition Tracker</title>
+  <title>Oliva</title>
+  <link rel="stylesheet" href="../huisstijl.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -39,11 +40,21 @@
       border-radius:50%;background:var(--green);border:1.5px solid #fff}
     .sync-dot.off{background:var(--muted)}
 
+    /* Kaart-secties: dashboard opgebouwd uit losse witte kaarten op de huisstijl-marmeren achtergrond */
+    .section-card{background:#fff;border:1px solid var(--marmer-ader,var(--border));
+      border-radius:16px;padding:14px 16px;margin-bottom:14px}
+    .section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
+      color:var(--muted);margin-bottom:10px}
+
     .macros{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
     .mc{background:var(--surface);border-radius:var(--r);padding:13px}
     .mc.big{grid-column:1/-1;background:var(--accent-bg)}
-    .ml{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px}
-    .mn{display:flex;align-items:baseline;gap:5px}
+    .mc.clickable{cursor:pointer;transition:transform .12s,box-shadow .12s;border:1.5px solid transparent}
+    .mc.clickable:hover{border-color:var(--accent);box-shadow:0 1px 6px rgba(0,0,0,.06)}
+    .mc.clickable:active{transform:scale(.98)}
+    .ml{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;gap:4px}
+    .ml .chevron{opacity:.5;font-size:10px}
+    .mn{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap}
     .mv{font-size:25px;font-weight:700;letter-spacing:-.03em}
     .mc.big .mv{color:var(--accent)}
     .mg{font-size:13px;color:var(--muted)}
@@ -71,16 +82,22 @@
     .fav-btn:hover{border-color:var(--accent);color:var(--accent)}
     .fav-portion{color:var(--muted);font-weight:400;margin-left:2px}
 
+    /* Favorieten-dashboardkaart: dichter 3-koloms grid i.p.v. de lossere pil-balk hierboven
+       (die blijft ongewijzigd voor #recipe-bar) */
+    .fav-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .fav-btn3{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;
+      padding:7px 6px;font-size:12px;font-weight:500;color:var(--fg);font-family:inherit;
+      cursor:pointer;transition:border-color .15s,color .15s;text-align:left;line-height:1.25;
+      display:flex;flex-direction:column;gap:1px;min-height:44px}
+    .fav-btn3:hover{border-color:var(--accent);color:var(--accent)}
+    .fav-btn3 .fav-portion{font-size:11px;margin-left:0}
+    .fav-empty{color:var(--muted);font-size:13px}
+
     .portion-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
     .portion-info{font-size:12px;color:var(--muted)}
     .portion-field{margin-left:2px}
     .portion-link{background:none;border:none;color:var(--accent);font-family:inherit;
       font-size:12px;font-weight:500;cursor:pointer;padding:2px 0}
-    .log-portion{color:var(--muted);font-size:14px;padding:4px 2px;cursor:pointer;
-      background:none;border:none;border-radius:4px;opacity:.4;line-height:1}
-    .log-portion:hover{opacity:1}
-    .log-portion.active{opacity:1;color:var(--accent)}
-
     .input-hint{font-size:12px;color:var(--muted);margin-bottom:8px}
     .input-row{display:flex;gap:8px;margin-bottom:22px}
     textarea{flex:1;border:1.5px solid var(--border);border-radius:var(--r);
@@ -133,6 +150,7 @@
     .match-card.custom-card{border-color:#c7d2fe}
     .match-card.custom-card:hover,.match-card.custom-card.sel{border-color:var(--blue);background:var(--blue-bg)}
     .match-name{font-size:14px;font-weight:500;flex:1}
+    .match-fav-star{color:#f5a623;margin-right:4px;font-size:12px}
     .match-badge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:10px;
       background:var(--blue-bg);color:var(--blue);margin-left:6px;vertical-align:middle}
     .match-detail{font-size:12px;color:var(--muted);margin-top:2px}
@@ -170,18 +188,19 @@
 
     .log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
     .log-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
-    .meal-group{margin-bottom:18px;border-radius:var(--r);overflow:hidden}
+    .meal-group{margin-bottom:14px;border-radius:var(--r);overflow:hidden;
+      border:1px solid var(--marmer-ader,var(--border))}
     .meal-group-hdr{display:flex;justify-content:space-between;align-items:center;
       padding:7px 11px;margin-bottom:0;border-left:3px solid transparent}
-    .meal-group-hdr[data-meal="Ontbijt"]{background:#fffbeb;border-left-color:#f59e0b}
-    .meal-group-hdr[data-meal="Lunch"]{background:#f0fdf4;border-left-color:#10b981}
-    .meal-group-hdr[data-meal="Diner"]{background:#eef2ff;border-left-color:#6366f1}
-    .meal-group-hdr[data-meal="Snack"]{background:#fdf2f8;border-left-color:#ec4899}
+    .meal-group-hdr[data-meal="Ontbijt"]{background:#fbeec2;border-left-color:#c08a1e}
+    .meal-group-hdr[data-meal="Lunch"]{background:#cfe9d5;border-left-color:#10a05a}
+    .meal-group-hdr[data-meal="Diner"]{background:#d6dcf7;border-left-color:#4f5fc9}
+    .meal-group-hdr[data-meal="Snack"]{background:#f6d3e3;border-left-color:#c2417a}
     .meal-group-name{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
-    .meal-group-hdr[data-meal="Ontbijt"] .meal-group-name{color:#92400e}
-    .meal-group-hdr[data-meal="Lunch"] .meal-group-name{color:#065f46}
-    .meal-group-hdr[data-meal="Diner"] .meal-group-name{color:#3730a3}
-    .meal-group-hdr[data-meal="Snack"] .meal-group-name{color:#9d174d}
+    .meal-group-hdr[data-meal="Ontbijt"] .meal-group-name{color:#6b4a0a}
+    .meal-group-hdr[data-meal="Lunch"] .meal-group-name{color:#0a5c34}
+    .meal-group-hdr[data-meal="Diner"] .meal-group-name{color:#262f7a}
+    .meal-group-hdr[data-meal="Snack"] .meal-group-name{color:#7a1043}
     .meal-group-kcal{font-size:13px;font-weight:600;color:var(--muted)}
     .btn-copy-meal{background:none;border:none;cursor:pointer;font-size:15px;opacity:.45;padding:0 0 0 6px;line-height:1;transition:opacity .15s}
     .btn-copy-meal:hover{opacity:.85}
@@ -192,7 +211,7 @@
     .macro-val{font-size:11.5px;color:var(--muted);margin-right:7px}
     .macro-val:last-child{margin-right:0}
     .macro-val.total{font-size:12.5px;font-weight:700;color:var(--fg)}
-    .meal-group-items{padding:0 4px}
+    .meal-group-items{padding:0 4px;background:#fff}
     /* Dagnotitie (FODMAP-klachten, vrije tekst per dag) */
     .day-note{margin-top:20px}
     .day-note textarea{width:100%;border:1.5px solid var(--border);border-radius:var(--r);
@@ -232,13 +251,24 @@
       appearance:none;-webkit-appearance:none;-moz-appearance:none;
       background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><path d='M1 2l3 3 3-3' stroke='%23777' stroke-width='1.3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
       background-repeat:no-repeat;background-position:right 5px center}
-    .log-del{color:var(--muted);font-size:15px;padding:4px;cursor:pointer;
-      background:none;border:none;border-radius:4px;opacity:.35}
-    .log-del:hover{opacity:1;color:var(--red)}
-    .log-fav{color:var(--muted);font-size:15px;padding:4px 2px;cursor:pointer;
-      background:none;border:none;border-radius:4px;opacity:.4;line-height:1}
-    .log-fav:hover{opacity:1}
-    .log-fav.active{opacity:1;color:var(--accent)}
+
+    /* Eén ⋯-actiemenu per logregel i.p.v. 4 losse knopjes (favoriet/portie/verplaats/verwijder) */
+    .item-menu-wrap{position:relative;flex-shrink:0}
+    .item-menu-btn{color:var(--muted);font-size:18px;padding:4px 6px;cursor:pointer;
+      background:none;border:none;border-radius:6px;line-height:1;opacity:.6}
+    .item-menu-btn:hover{opacity:1;background:var(--surface)}
+    .item-menu{position:absolute;right:0;top:calc(100% + 4px);background:#fff;
+      border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12);
+      padding:6px;z-index:50;min-width:172px}
+    .item-menu.hidden{display:none}
+    .item-menu button,.item-menu .move-select{width:100%;text-align:left;background:none;
+      border:none;font-family:inherit;font-size:13px;color:var(--fg);padding:7px 8px;
+      border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:7px}
+    .item-menu button:hover{background:var(--surface)}
+    .item-menu button.danger:hover{background:#fee2e2;color:var(--red)}
+    .item-menu button.active{color:var(--accent)}
+    .item-menu .move-select{appearance:auto;-webkit-appearance:auto;margin-bottom:2px;
+      border:1px solid var(--border)}
 
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;
       align-items:center;justify-content:center;z-index:100;padding:20px}
@@ -250,6 +280,18 @@
       color:var(--muted);font-family:inherit;border:none;
       border-bottom:2.5px solid transparent;cursor:pointer;margin-bottom:-1.5px;transition:all .15s}
     .modal-tab.active{color:var(--fg);border-bottom-color:var(--accent)}
+
+    /* Macro-detail: ranglijst met horizontale balken, sorteren op grootste bijdrage */
+    .macro-detail-hdr{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+    .macro-detail-title{font-size:17px;font-weight:700}
+    .macro-detail-sub{font-size:13px;color:var(--muted);margin-bottom:16px}
+    .macro-src-row{margin-bottom:12px}
+    .macro-src-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+    .macro-src-name{font-weight:500}
+    .macro-src-val{color:var(--muted);flex-shrink:0;margin-left:8px}
+    .macro-src-bar{height:8px;background:var(--surface);border-radius:4px;overflow:hidden}
+    .macro-src-bar-fill{height:100%;border-radius:4px}
+    .macro-src-empty{color:var(--muted);font-size:13px;padding:8px 0}
 
     .mode-toggle{display:flex;background:var(--surface);border-radius:8px;
       padding:3px;margin-bottom:18px;width:fit-content}
@@ -308,12 +350,21 @@
     .hidden{display:none!important}
   </style>
 </head>
-<body>
+<body class="huisstijl tool-oliva">
+<header class="tool-kop">
+  <div class="tool-logo" aria-hidden="true">🫒</div>
+  <div>
+    <h1 class="tool-naam">Oliva</h1>
+    <details class="tool-info">
+      <summary>Macrotracker <span class="tool-i">i</span></summary>
+      <p>Oliva is Latijn voor olijf: klein, vol goede vetten en het hart van de mediterrane keuken. Eigenlijk is de olijf zelf al een macro-les.</p>
+    </details>
+  </div>
+</header>
 <div class="wrap">
 
   <div class="top">
-    <h1>Nutrition Tracker</h1>
-    <div class="top-right">
+    <div class="top-right" style="margin-left:auto">
       <button class="refresh-btn" id="refresh-btn" onclick="manualRefresh()" title="Vernieuwen">↻</button>
       <div class="date-nav">
         <button class="nav-btn" onclick="shiftDay(-1)">‹</button>
@@ -326,10 +377,16 @@
     </div>
   </div>
 
-  <div class="macros" id="macros-grid"></div>
-  <div class="meal-tabs" id="meal-tabs"></div>
+  <div class="section-card">
+    <div class="macros" id="macros-grid"></div>
+  </div>
 
-  <div class="fav-bar hidden" id="fav-bar"></div>
+  <div class="section-card">
+    <div class="section-title">Favorieten</div>
+    <div class="fav-grid hidden" id="fav-bar"></div>
+  </div>
+
+  <div class="meal-tabs" id="meal-tabs"></div>
 
   <div class="input-hint">Bijv. <em>35g havermout melk 200ml</em> of <em>havermout 35g</em></div>
   <div class="input-row">
@@ -349,23 +406,34 @@
 
   <div class="fav-bar hidden" id="recipe-bar"></div>
 
-  <div class="divider"></div>
-  <div class="log-header">
-    <span class="log-title" id="log-title">Vandaag<span class="note-dot hidden" id="note-indicator"></span></span>
-    <div>
-      <button class="btn-ghost btn-sm hidden" id="select-btn" onclick="toggleSelectMode()">Selecteer</button>
-      <button class="btn-ghost btn-sm hidden" id="clear-btn" onclick="clearDay()">Wis dag</button>
+  <div class="section-card">
+    <div class="log-header">
+      <span class="log-title" id="log-title">Vandaag<span class="note-dot hidden" id="note-indicator"></span></span>
+      <div>
+        <button class="btn-ghost btn-sm hidden" id="select-btn" onclick="toggleSelectMode()">Selecteer</button>
+        <button class="btn-ghost btn-sm hidden" id="clear-btn" onclick="clearDay()">Wis dag</button>
+      </div>
+    </div>
+    <div class="select-bar hidden" id="select-bar">
+      <input class="form-input" id="select-recipe-name" type="text" placeholder="Naam recept (bv. Choco Bliss Ball)">
+      <button class="btn-accent btn-sm" onclick="makeRecipeFromSelection()">Maaltijd maken</button>
+      <button class="btn-ghost btn-sm" onclick="toggleSelectMode()">Annuleer</button>
+    </div>
+    <div id="log-list"></div>
+    <div class="day-note">
+      <textarea id="day-note-input" rows="2" placeholder="Klachten vandaag? Beschrijf hier wanneer je wat merkte…"
+        oninput="autoResize(this)" onblur="saveDayNote()" onkeydown="noteKey(event)"></textarea>
     </div>
   </div>
-  <div class="select-bar hidden" id="select-bar">
-    <input class="form-input" id="select-recipe-name" type="text" placeholder="Naam recept (bv. Choco Bliss Ball)">
-    <button class="btn-accent btn-sm" onclick="makeRecipeFromSelection()">Maaltijd maken</button>
-    <button class="btn-ghost btn-sm" onclick="toggleSelectMode()">Annuleer</button>
-  </div>
-  <div id="log-list"></div>
-  <div class="day-note">
-    <textarea id="day-note-input" rows="2" placeholder="Klachten vandaag? Beschrijf hier wanneer je wat merkte…"
-      oninput="autoResize(this)" onblur="saveDayNote()" onkeydown="noteKey(event)"></textarea>
+</div>
+
+<!-- Macro-detail overlay: ranglijst van producten die vandaag het meest bijdroegen aan de aangetikte macro -->
+<div class="overlay hidden" id="macro-modal" onclick="if(event.target===this)closeMacroDetail()">
+  <div class="modal">
+    <div class="macro-detail-hdr"><span class="macro-detail-title" id="md-title"></span></div>
+    <div class="macro-detail-sub" id="md-sub"></div>
+    <div id="md-list"></div>
+    <div class="form-actions"><button class="btn-ghost" onclick="closeMacroDetail()">Sluiten</button></div>
   </div>
 </div>
 
@@ -791,7 +859,13 @@ function rankScore(item,fuseScore){
   if(!f)return fuseScore;
   const recency=Math.max(0,1-daysSince(f.lastUsed)/30);   // 1 = vandaag gebruikt, 0 = 30+ dagen geleden
   const freqBoost=Math.min(f.count||0,10)/10;              // count 10+ = volledige boost
-  return Math.max(0,fuseScore-(0.15*freqBoost+0.15*recency)); // max 0.3 van de score afhalen
+  const pinBoost=f.pinned?0.2:0;                           // gepinde favorieten komen extra naar voren
+  return Math.max(0,fuseScore-(0.15*freqBoost+0.15*recency+pinBoost)); // max 0.5 van de score afhalen
+}
+// Is dit product (gepind of frequent genoeg) een favoriet? Gebruikt voor het sterretje bij zoekresultaten.
+function isFavProduct(item){
+  const f=state.freq[productKey(item)];
+  return!!(f&&(f.pinned||f.count>=2));
 }
 function searchAll(query,limit){
   limit=limit||3;
@@ -974,7 +1048,8 @@ function topFavorites(){
   // Zowel handmatig gepinde als automatisch-frequente favorieten vervagen na 30 dagen zonder gebruik
   // Gepinde favorieten tellen altijd mee (bewuste keuze van Sophie); resterende plekken tot MAX_FAVS gaan naar de meest gebruikte
   const entries=Object.entries(state.freq||{}).filter(([,f])=>daysSince(f.lastUsed)<=30);
-  const pinned=entries.filter(([,f])=>f.pinned).map(([key,f])=>({...f,key}));
+  const pinned=entries.filter(([,f])=>f.pinned).map(([key,f])=>({...f,key}))
+    .sort((a,b)=>(b.count||0)-(a.count||0));
   const freqBased=entries.filter(([,f])=>!f.pinned&&f.count>=2)
     .sort((a,b)=>b[1].count-a[1].count)
     .map(([key,f])=>({...f,key}));
@@ -1010,18 +1085,22 @@ function toggleFavorite(idx){
 function renderFavBar(){
   const bar=document.getElementById('fav-bar');if(!bar)return;
   const favs=topFavorites();
-  if(!favs.length){bar.classList.add('hidden');bar.innerHTML='';return;}
   bar.classList.remove('hidden');
-  bar.innerHTML=favs.map((f,fi)=>
-    `<button class="fav-btn" onclick="quickAdd(${fi})">${esc(f.item.Voedingsmiddelnaam||f.item.name)}<span class="fav-portion">${FAV_PORTION_GRAMS}g</span></button>`).join('');
+  if(!favs.length){bar.innerHTML='<div class="fav-empty">Nog geen favorieten — voeg iets toe of tik ★ bij een gelogd item.</div>';bar._favs=[];return;}
+  bar.innerHTML=favs.map((f,fi)=>{
+    const p=portionFor(f.item);
+    const label=p?`${p.label}`:`${FAV_PORTION_GRAMS}g`;
+    return `<button class="fav-btn3" onclick="quickAdd(${fi})">${esc(f.item.Voedingsmiddelnaam||f.item.name)}<span class="fav-portion">${esc(label)}</span></button>`;
+  }).join('');
   bar._favs=favs;
 }
-// Favorieten worden altijd met een vaste portie toegevoegd (FAV_PORTION_GRAMS) — niet meer met de
-// laatst gebruikte hoeveelheid. Hoeveelheid is daarna gewoon aan te passen in het dagoverzicht.
+// Favorieten gebruiken hun opgeslagen vaste portie (portionFor) als die er is, anders FAV_PORTION_GRAMS.
+// Hoeveelheid is daarna gewoon aan te passen in het dagoverzicht.
 function quickAdd(fi){
   const favs=document.getElementById('fav-bar')._favs||[];
   const f=favs[fi];if(!f)return;
-  const grams=FAV_PORTION_GRAMS;
+  const p=portionFor(f.item);
+  const grams=p?p.grams:FAV_PORTION_GRAMS;
   const log=getLog(currentDate);
   log.push(calcMacros(f.item,grams,activeMeal));
   bumpFreq(f.item,grams);
@@ -1062,19 +1141,54 @@ function renderMacros(){
       <div class="ml">Calorieën</div>
       <div class="mn"><span class="mv">${t.kcal}</span><span class="mg">/ ${g.kcal} kcal</span>${pctTag(t.kcal,g.kcal)}</div>
       <div class="bar"><div class="bf" style="width:${barPct(t.kcal,g.kcal)}%"></div></div></div>
-    <div class="mc${over(t.eiwit,g.eiwit)?' over':''}">
-      <div class="ml">Eiwit</div>
+    <div class="mc clickable${over(t.eiwit,g.eiwit)?' over':''}" onclick="openMacroDetail('eiwit')">
+      <div class="ml">Eiwit <span class="chevron">›</span></div>
       <div class="mn"><span class="mv">${t.eiwit}</span><span class="mg">/ ${g.eiwit}g</span>${pctTag(t.eiwit,g.eiwit)}</div>
       <div class="bar"><div class="bf" style="width:${barPct(t.eiwit,g.eiwit)}%"></div></div></div>
-    <div class="mc${over(t.koolhydraten,g.koolhydraten)?' over':''}">
-      <div class="ml">Koolhydraten</div>
+    <div class="mc clickable${over(t.koolhydraten,g.koolhydraten)?' over':''}" onclick="openMacroDetail('koolhydraten')">
+      <div class="ml">Koolhydraten <span class="chevron">›</span></div>
       <div class="mn"><span class="mv">${t.koolhydraten}</span><span class="mg">/ ${g.koolhydraten}g</span>${pctTag(t.koolhydraten,g.koolhydraten)}</div>
       <div class="bar"><div class="bf" style="width:${barPct(t.koolhydraten,g.koolhydraten)}%"></div></div></div>
-    <div class="mc${over(t.vet,g.vet)?' over':''}">
-      <div class="ml">Vetten</div>
+    <div class="mc clickable${over(t.vet,g.vet)?' over':''}" onclick="openMacroDetail('vet')">
+      <div class="ml">Vetten <span class="chevron">›</span></div>
       <div class="mn"><span class="mv">${t.vet}</span><span class="mg">/ ${g.vet}g</span>${pctTag(t.vet,g.vet)}</div>
       <div class="bar"><div class="bf" style="width:${barPct(t.vet,g.vet)}%"></div></div></div>`;
 }
+const MACRO_LABELS={eiwit:'Eiwit',koolhydraten:'Koolhydraten',vet:'Vet'};
+// Ranglijst van producten die vandaag het meest bijdroegen aan een macro — recepten worden
+// uitgesplitst naar hun ingrediënten, zodat je ziet wat er ECHT in zat (Sophie's "waar zit dat vet in"-vraag)
+function macroSources(macroKey){
+  const log=getLog(currentDate),rows=[];
+  log.forEach(e=>{
+    if(e.isRecipe&&e.ingredients){
+      e.ingredients.forEach(ing=>{if(ing[macroKey]>0)rows.push({name:`${ing.name} (in ${e.name})`,val:ing[macroKey]});});
+    }else if(e[macroKey]>0){
+      rows.push({name:e.name,val:e[macroKey]});
+    }
+  });
+  rows.sort((a,b)=>b.val-a.val);
+  const MAXROWS=7;
+  if(rows.length<=MAXROWS)return rows;
+  const top=rows.slice(0,MAXROWS-1);
+  const overig=rows.slice(MAXROWS-1).reduce((s,r)=>s+r.val,0);
+  top.push({name:'Overig',val:overig});
+  return top;
+}
+function openMacroDetail(macroKey){
+  const t=getTotals(currentDate),sources=macroSources(macroKey),color=MACRO_COLORS[macroKey];
+  const max=sources.length?sources[0].val:0;
+  document.getElementById('md-title').textContent=MACRO_LABELS[macroKey]+' vandaag';
+  document.getElementById('md-sub').textContent=`${t[macroKey]}g totaal · waar zat dat vooral in?`;
+  document.getElementById('md-list').innerHTML=sources.length?sources.map(s=>{
+    const pct=t[macroKey]>0?Math.round(s.val/t[macroKey]*100):0;
+    const w=max>0?Math.round(s.val/max*100):0;
+    return `<div class="macro-src-row"><div class="macro-src-top"><span class="macro-src-name">${esc(s.name)}</span>
+      <span class="macro-src-val">${r1(s.val)}g · ${pct}%</span></div>
+      <div class="macro-src-bar"><div class="macro-src-bar-fill" style="width:${w}%;background:${color}"></div></div></div>`;
+  }).join(''):'<div class="macro-src-empty">Nog niets gelogd vandaag.</div>';
+  document.getElementById('macro-modal').classList.remove('hidden');
+}
+function closeMacroDetail(){document.getElementById('macro-modal').classList.add('hidden');}
 function renderLog(){
   const log=getLog(currentDate),el=document.getElementById('log-list');
   const cb=document.getElementById('clear-btn'),selBtn=document.getElementById('select-btn'),title=document.getElementById('log-title');
@@ -1105,17 +1219,42 @@ function renderMealGroup(meal,items){
   const rows=items.map(e=>e.isRecipe?renderRecipeRow(e,meal):renderItemRow(e,meal)).join('');
   return `<div class="meal-group">${hdr}${sub}<div class="meal-group-items">${rows}</div></div>`;
 }
+// Eén ⋯-menu i.p.v. losse knopjes: move-select + (optioneel) favoriet + (optioneel) vaste portie + verwijderen
+function itemMenuHtml(e,meal,opts){
+  opts=opts||{};
+  const moveOptions=MEALS.map(m=>`<option value="${m}"${m===meal?' selected':''}>${m}</option>`).join('');
+  let extra='';
+  if(opts.fav!==undefined){
+    extra+=`<button class="${opts.fav?'active':''}" onclick="toggleFavorite(${e._i});closeAllItemMenus()">${opts.fav?'★ Verwijder uit favorieten':'☆ Voeg toe aan favorieten'}</button>`;
+  }
+  if(opts.port!==undefined){
+    extra+=`<button class="${opts.port?'active':''}" onclick="openPortionModalForLog(${e._i});closeAllItemMenus()">⚖ ${opts.port?`Wijzig vaste portie (1 ${esc(opts.port.label)} = ${opts.port.grams}g)`:'Vaste portie instellen'}</button>`;
+  }
+  return `<div class="item-menu-wrap">
+      <button class="item-menu-btn" onclick="toggleItemMenu(event,${e._i})" title="Meer opties">⋯</button>
+      <div class="item-menu hidden" id="item-menu-${e._i}">
+        <select class="move-select" title="Verplaats naar..." onchange="moveEntry(${e._i},this.value);closeAllItemMenus()">${moveOptions}</select>
+        ${extra}
+        <button class="danger" onclick="deleteEntry(${e._i});closeAllItemMenus()">✕ Verwijder</button>
+      </div>
+    </div>`;
+}
+function toggleItemMenu(evt,i){
+  evt.stopPropagation();
+  const menu=document.getElementById(`item-menu-${i}`);if(!menu)return;
+  const wasOpen=!menu.classList.contains('hidden');
+  closeAllItemMenus();
+  if(!wasOpen)menu.classList.remove('hidden');
+}
+function closeAllItemMenus(){
+  document.querySelectorAll('.item-menu').forEach(m=>m.classList.add('hidden'));
+}
+document.addEventListener('click',closeAllItemMenus);
 function renderItemRow(e,meal){
   const fav=isFavorited(e._item);
   const port=portionFor(e._item);
-  const portTitle=port?`Vaste portie: 1 ${port.label} = ${port.grams}g (klik om te wijzigen)`:'Vaste portie instellen';
   const check=selectMode?`<input class="select-check" type="checkbox" ${selectedIdx.has(e._i)?'checked':''} onchange="toggleSelectItem(${e._i})">`:'';
-  const actions=selectMode?'':`<select class="move-select" title="Verplaats naar..." onchange="moveEntry(${e._i},this.value)">
-        ${MEALS.map(m=>`<option value="${m}"${m===meal?' selected':''}>${m}</option>`).join('')}
-      </select>
-      <button class="log-fav${fav?' active':''}" onclick="toggleFavorite(${e._i})" title="${fav?'Verwijder uit favorieten':'Voeg toe aan favorieten'}">${fav?'★':'☆'}</button>
-      <button class="log-portion${port?' active':''}" onclick="openPortionModalForLog(${e._i})" title="${esc(portTitle)}">⚖</button>
-      <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>`;
+  const actions=selectMode?'':itemMenuHtml(e,meal,{fav,port});
   return `<div class="log-item">
       ${check}
       <div class="log-info"><div class="log-name">${esc(e.name)}</div>
@@ -1142,10 +1281,7 @@ function renderRecipeRow(e,meal){
         </div></div>
       <div class="log-right"><div class="log-kcal">${e.kcal} kcal</div>
         <div class="log-macros">${macroBadges(e)}</div></div>
-      <select class="move-select" title="Verplaats naar..." onchange="moveEntry(${e._i},this.value)">
-        ${MEALS.map(m=>`<option value="${m}"${m===meal?' selected':''}>${m}</option>`).join('')}
-      </select>
-      <button class="log-del" onclick="deleteEntry(${e._i})">✕</button>
+      ${itemMenuHtml(e,meal)}
     </div>${ingredients}`;
 }
 // Kleine gekleurde bolletjes vóór elk cijfer i.p.v. volle badges — rustiger en compacter.
@@ -1249,6 +1385,31 @@ function commitPortion(idx){
 function portionKey(e,idx){if(e.key==='Enter'){e.preventDefault();commitPortion(idx);}if(e.key==='Escape'){e.preventDefault();cancelEditGrams(idx);}}
 
 // ── PENDING ──────────────────────────────────────────────────────────────────
+// Geeft het product terug waarop de vaste-portie-rij van toepassing is, voor elke pending-mode
+// (memory/matches/search) — zorgt dat de vaste portie ook klikbaar is bij een gewone zoekopdracht,
+// niet alleen wanneer de app 'm automatisch herkent (Sophie's rijstwafel-bug).
+function resolvePendingProduct(pi){
+  const item=pending[pi];if(!item)return null;
+  if(item.mode==='memory')return item.memory;
+  if(item.mode==='matches')return item.selIdx>=0?(item.matches||[])[item.selIdx]:null;
+  if(item.mode==='search'&&(item.searchSource||'nevo')==='nevo')
+    return item.selIdx>=0?(item.searchResults||[])[item.selIdx]:null;
+  return null;
+}
+function portionRowHtml(pi,product){
+  if(!product)return'';
+  const portion=portionFor(product);
+  return `<div class="portion-row">${portion
+    ?`<span class="portion-info">1 ${esc(portion.label)} = ${portion.grams}g</span>
+       <span class="grams-field portion-field"><input class="grams-inp" type="number" min="0" step="0.5" placeholder="aantal" oninput="updPortionQty(${pi},this.value)"><span class="grams-unit">× ${esc(portion.label)}</span></span>
+       <button class="portion-link" onclick="openPortionModalFromPending(${pi})">✎ wijzig portie</button>`
+    :`<button class="portion-link" onclick="openPortionModalFromPending(${pi})">+ Vaste portie instellen</button>`
+  }</div>`;
+}
+function openPortionModalFromPending(pi){
+  const product=resolvePendingProduct(pi);if(!product)return;
+  openPortionModal(product);
+}
 function renderPending(){
   const sec=document.getElementById('pending-section'),cont=document.getElementById('pending-items');
   if(!pending.length){sec.classList.add('hidden');return;}
@@ -1276,16 +1437,9 @@ function renderPending(){
     let inner='';
     if(item.mode==='memory'){
       const mem=item.memory,p=calcMacros(mem,item.grams,activeMeal);
-      const portion=portionFor(mem);
-      const portionRow=`<div class="portion-row">${portion
-        ?`<span class="portion-info">1 ${esc(portion.label)} = ${portion.grams}g</span>
-           <span class="grams-field portion-field"><input class="grams-inp" type="number" min="0" step="0.5" placeholder="aantal" oninput="updPortionQty(${pi},this.value)"><span class="grams-unit">× ${esc(portion.label)}</span></span>
-           <button class="portion-link" onclick="openPortionModal(pending[${pi}].memory)">✎ wijzig portie</button>`
-        :`<button class="portion-link" onclick="openPortionModal(pending[${pi}].memory)">+ Vaste portie instellen</button>`
-      }</div>`;
       inner=`<div class="mem-card"><div><div class="mem-name">${esc(mem.Voedingsmiddelnaam||mem.name)}</div>
         <div class="mem-sub" id="msub-${pi}">${item.grams}g · ${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g</div>
-        ${portionRow}</div>
+        ${portionRowHtml(pi,mem)}</div>
         <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'matches')">Iets anders</button></div>`;
     } else if(item.mode==='search'){
       inner=renderSearchPanel(item,pi);
@@ -1293,6 +1447,8 @@ function renderPending(){
       const matches=item.matches||[];
       inner=(matches.length?matches.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')
         :'<div class="search-empty">Geen resultaten.</div>');
+      const sel=item.selIdx>=0?matches[item.selIdx]:null;
+      if(sel)inner+=portionRowHtml(pi,sel);
       inner+=`<div class="not-found-row"><span>Staat er niet tussen?</span>
         <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Zoek / voeg toe</button></div>`;
     }
@@ -1304,11 +1460,13 @@ function renderSearchPanel(item,pi){
   const src=item.searchSource||'nevo';let content='';
   if(src==='nevo'){
     const q=item.searchQuery||item.query,results=item.searchResults||[];
+    const sel=item.selIdx>=0?results[item.selIdx]:null;
     content=`<input class="search-input" type="text" placeholder="Zoek in NEVO…" value="${esc(q)}"
       oninput="doNevoSearch(${pi},this.value)" onkeydown="if(event.key==='Enter')event.preventDefault()" id="si-${pi}">
       <div class="search-results">${results.length===0&&q
         ?'<div class="search-empty">Niets gevonden. Voeg zelf toe via "Handmatig".</div>'
-        :results.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')}</div>`;
+        :results.map((r,mi)=>matchCardHtml(r,pi,mi,item.selIdx===mi)).join('')}</div>
+      ${sel?portionRowHtml(pi,sel):''}`;
   } else {
     content=`<div class="manual-form"><h4>Voeg eigen product toe</h4>
       <div class="form-row full"><div class="form-field"><div class="form-label">Productnaam</div>
@@ -1337,8 +1495,9 @@ function matchCardHtml(item,pi,mi,sel){
   const kh=isC?item.koolhydraten:fv(item['Koolhydraten (g)']),vet=isC?item.vet:fv(item['Vet (g)']);
   const name=isC?item.name:item.Voedingsmiddelnaam;
   const syn=!isC?item.Synoniem:'';
+  const isFav=isFavProduct(item);
   return `<div class="match-card${isC?' custom-card':''}${sel?' sel':''}" onclick="selectMatch(${pi},${mi})">
-    <div><div class="match-name">${esc(name)}${isC?'<span class="match-badge">Eigen</span>':''}</div>
+    <div><div class="match-name">${isFav?'<span class="match-fav-star" title="Favoriet">★</span>':''}${esc(name)}${isC?'<span class="match-badge">Eigen</span>':''}</div>
       ${syn?`<div class="match-detail">${esc(syn.slice(0,70))}</div>`:''}
       <div class="match-detail">${kcal} kcal · E ${eiwit}g · KH ${kh}g · V ${vet}g per 100g</div></div>
     <span class="match-check">✓</span></div>`;
@@ -1536,8 +1695,9 @@ function openPortionModalForLog(idx){
 }
 // Zet het aantal-porties-veld om naar gram in het bevestig-scherm (bv. "3" × cracker à 8g = 24g)
 function updPortionQty(pi,val){
-  const item=pending[pi];if(!item||item.mode!=='memory')return;
-  const portion=portionFor(item.memory);if(!portion)return;
+  const item=pending[pi];if(!item)return;
+  const product=resolvePendingProduct(pi);if(!product)return;
+  const portion=portionFor(product);if(!portion)return;
   const n=parseFloat((val||'').replace(',','.'));if(!n||n<=0)return;
   const grams=r1(n*portion.grams);
   item.grams=grams;
