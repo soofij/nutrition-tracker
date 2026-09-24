@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oliva</title>
-  <link rel="stylesheet" href="../huisstijl.css">
+  <link rel="stylesheet" href="huisstijl.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -85,13 +85,22 @@
     /* Favorieten-dashboardkaart: dichter 3-koloms grid i.p.v. de lossere pil-balk hierboven
        (die blijft ongewijzigd voor #recipe-bar) */
     .fav-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .fav-card-wrap{position:relative}
     .fav-btn3{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;
       padding:7px 6px;font-size:12px;font-weight:500;color:var(--fg);font-family:inherit;
       cursor:pointer;transition:border-color .15s,color .15s;text-align:left;line-height:1.25;
-      display:flex;flex-direction:column;gap:1px;min-height:44px}
+      display:flex;flex-direction:column;gap:1px;min-height:44px;width:100%}
     .fav-btn3:hover{border-color:var(--accent);color:var(--accent)}
     .fav-btn3 .fav-portion{font-size:11px;margin-left:0}
     .fav-empty{color:var(--muted);font-size:13px}
+    /* Direct kunnen verwijderen uit favorieten, zonder dat het product die dag gelogd hoeft te zijn */
+    .fav-remove{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;
+      background:#fff;border:1.5px solid var(--border);color:var(--muted);font-size:11px;line-height:1;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;opacity:0;
+      transition:opacity .12s}
+    .fav-card-wrap:hover .fav-remove,.fav-remove:focus{opacity:1}
+    .fav-remove:hover{border-color:var(--red);color:var(--red)}
+    @media (hover:none){.fav-remove{opacity:1}}
 
     .portion-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
     .portion-info{font-size:12px;color:var(--muted)}
@@ -730,7 +739,7 @@ async function setupSync(){
       if(!res.ok)throw new Error(`Verbindingsfout: ${res.status}`);
       // Pull data van bestaand Gist en samenvoegen
       const data=await res.json();
-      const content=data.files?.['macros-data.json']?.content;
+      const content=await fetchGistFileContent(data.files?.['macros-data.json'],token);
       if(content){mergeState(JSON.parse(content));localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
       toast('Verbonden met bestaand Gist ✓');
     }
@@ -751,6 +760,19 @@ async function pushToGist(){
   } catch(e){console.warn('Push mislukt:',e);}
 }
 
+// GitHub's Gist-API knipt het 'content'-veld van een bestand af als het te groot wordt
+// (o.a. zichtbaar als "This file has been truncated" op gist.github.com). Zonder deze check
+// leverde JSON.parse() op zo'n afgeknipt stuk tekst een parsefout op, die pullFromGist() stil
+// liet mislukken ("Geen verbinding met Gist") — terwijl de volledige data via raw_url gewoon
+// beschikbaar was. Nu wordt bij truncatie altijd de volledige inhoud via raw_url opgehaald.
+async function fetchGistFileContent(file,token){
+  if(!file)return null;
+  if(!file.truncated)return file.content;
+  const res=await fetch(file.raw_url,{headers:token?{'Authorization':`token ${token}`}:{}});
+  if(!res.ok)return null;
+  return await res.text();
+}
+
 async function pullFromGist(){
   const cfg=getSyncCfg(); if(!cfg)return false;
   try {
@@ -759,12 +781,12 @@ async function pullFromGist(){
     });
     if(!res.ok)return false;
     const data=await res.json();
-    const content=data.files?.['macros-data.json']?.content;
+    const content=await fetchGistFileContent(data.files?.['macros-data.json'],cfg.token);
     if(!content)return false;
     mergeState(JSON.parse(content));
     localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
     return true;
-  } catch(e){return false;}
+  } catch(e){console.warn('Pull mislukt:',e);return false;}
 }
 
 function mergeState(remote){
@@ -1090,9 +1112,24 @@ function renderFavBar(){
   bar.innerHTML=favs.map((f,fi)=>{
     const p=portionFor(f.item);
     const label=p?`${p.label}`:`${FAV_PORTION_GRAMS}g`;
-    return `<button class="fav-btn3" onclick="quickAdd(${fi})">${esc(f.item.Voedingsmiddelnaam||f.item.name)}<span class="fav-portion">${esc(label)}</span></button>`;
+    return `<div class="fav-card-wrap">
+      <button class="fav-btn3" onclick="quickAdd(${fi})">${esc(f.item.Voedingsmiddelnaam||f.item.name)}<span class="fav-portion">${esc(label)}</span></button>
+      <button class="fav-remove" onclick="event.stopPropagation();removeFavorite(${fi})" title="Verwijder uit favorieten">✕</button>
+    </div>`;
   }).join('');
   bar._favs=favs;
+}
+// Favoriet direct verwijderen vanuit de favorietenkaart zelf, zonder dat het product die dag
+// gelogd hoeft te staan (voorheen kon dat alleen via het ⋯-menu op een gelogd item — Sophie's verzoek).
+// Werkt zowel voor handmatig gepinde als voor frequentie-favorieten: pinned gaat uit, en de teller
+// zakt onder de frequentie-drempel zodat 'm niet meteen weer terugkomt.
+function removeFavorite(fi){
+  const favs=document.getElementById('fav-bar')._favs||[];
+  const f=favs[fi];if(!f)return;
+  const entry=state.freq[f.key];if(!entry)return;
+  entry.pinned=false;entry.count=0;
+  save();renderFavBar();
+  toast(`${f.item.Voedingsmiddelnaam||f.item.name} verwijderd uit favorieten`);
 }
 // Favorieten gebruiken hun opgeslagen vaste portie (portionFor) als die er is, anders FAV_PORTION_GRAMS.
 // Hoeveelheid is daarna gewoon aan te passen in het dagoverzicht.
@@ -1981,7 +2018,7 @@ function importData(){
           if(!cur||v.count>cur.count)merged.freq[k]={...v,pinned:!!(v.pinned||(cur&&cur.pinned))};
           else cur.pinned=!!(cur.pinned||v.pinned);
         });
-        Object.keys(imp.logs||{}).forEach(d=>{if(!merged.logs[d])merged.logs[d]=imp.logs[d];});
+        Object.keys(imp.logs||{}).forEach(d=>{if(!merged.logs[d]||!merged.logs[d].length)merged.logs[d]=imp.logs[d];}); // lege dag ([]) telt niet als bestaand
         if(!merged.recipes)merged.recipes=[];
         merged.recipes=[...merged.recipes,...(imp.recipes||[]).filter(r=>!merged.recipes.find(e=>e.id===r.id))];
         if(!merged.symptomNotes)merged.symptomNotes={};
