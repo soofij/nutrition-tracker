@@ -439,7 +439,7 @@ const FAV_PORTION_GRAMS=100,MAX_FAVS=12;
 const $=id=>document.getElementById(id);
 
 let state=loadState(),nevoFuse=null,customFuse=null,pending=[],currentDate=todayKey(),activeMeal='Ontbijt',goalMode='gram';
-let expandedRecipes=new Set(),selectMode=false,selectedIdx=new Set(),recipeBuilder=null,favList=[],portionItem=null,toastTimer=null,undoFn=null;
+let lastSyncError='',expandedRecipes=new Set(),selectMode=false,selectedIdx=new Set(),recipeBuilder=null,favList=[],portionItem=null,toastTimer=null,undoFn=null;
 
 function defaultState(){return{goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[],freq:{},recipes:[],symptomNotes:{},portions:{}};}
 function ensureFields(s){const d=defaultState();for(const k in d)if(!s[k])s[k]=d[k];s.freq=migrateFreq(s.freq);return s;}
@@ -489,8 +489,9 @@ async function fetchGist(id,token){
   const f=(await res.json()).files?.[GIST_FILE];
   if(!f)return null;
   if(!f.truncated)return JSON.parse(f.content);
-  const raw=await fetch(f.raw_url,{headers:auth});
-  return raw.ok?JSON.parse(await raw.text()):null;
+  const raw=await fetch(f.raw_url);
+  if(!raw.ok)throw new Error('raw '+raw.status);
+  return JSON.parse(await raw.text());
 }
 async function setupSync(){
   const token=$('sync-token').value.trim();let id=$('sync-gist-id').value.trim();
@@ -520,9 +521,9 @@ async function pushToGist(){
     body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}})});}catch(e){}
 }
 async function pullFromGist(){
-  const cfg=getSyncCfg();if(!cfg)return false;
+  const cfg=getSyncCfg();if(!cfg)return false;lastSyncError='';
   try{const remote=await fetchGist(cfg.gistId,cfg.token);if(!remote)return false;mergeInto(state,remote,true);persist();return true;}
-  catch(e){return false;}
+  catch(e){lastSyncError=e.message;return false;}
 }
 function mergeState(remote){mergeInto(state,remote,true);}
 function mergeInto(s,r,longerWins){
@@ -553,7 +554,7 @@ async function manualRefresh(){
   const btn=$('refresh-btn');btn.classList.add('spinning');
   const ok=await pullFromGist();
   btn.classList.remove('spinning');
-  if(ok){render();toast('Bijgewerkt ✓');}else toast('Geen verbinding met Gist');
+  if(ok){render();toast('Bijgewerkt ✓');}else toast('Geen verbinding met Gist'+({401:' — token ongeldig of verlopen',404:' — Gist niet gevonden'}[lastSyncError]||(lastSyncError?` (${lastSyncError})`:'')));
 }
 function disconnectSync(){
   if(!confirm('Sync-verbinding verwijderen?'))return;
