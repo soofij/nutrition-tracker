@@ -3,40 +3,52 @@
    Gebruik: zie "Naamgeving tools.md", onderdeel Huisstijl
    ========================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Julius+Sans+One&family=Jost:wght@300;400;600&display=swap');
 
 /* ---------- Basiskleuren ---------- */
 :root {
   --marmer: #F2F2EF;        /* achtergrond, koel gebroken wit */
   --marmer-ader: #E4E3DE;   /* randen en scheidingen */
   --steen: #2F2D2A;         /* tekst */
-  --steen-zacht: #6B6863;   /* ondertitel en uitlegtekst */
-  --accent: #6B7F3A;        /* standaard; wordt per tool overschreven */
+  --steen-zacht: #6B6863;   /* ondertitel */
+  --accent: #6B7F3A;        /* standaard voor tools zonder eigen naam; wordt per tool overschreven */
 }
 
 /* ---------- Accentkleur per tool ----------
-   Zet de klasse op <body>, bijvoorbeeld: <body class="huisstijl tool-oliva"> */
-.tool-oliva  { --accent: #6B7F3A; }   /* olijfgroen */
-.tool-flora  { --accent: #B5739D; }   /* bloesemroze */
+   Zet de klasse op <body>, bijvoorbeeld: <body class="huisstijl tool-loof"> */
+.tool-loof  { --accent: #A8692F; }   /* korstbruin */
+.tool-flora { --accent: #B5739D; }   /* bloesemroze */
 
 /* ---------- Pagina ---------- */
 .huisstijl {
   background: var(--marmer);
   color: var(--steen);
-  font-family: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'Jost', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-weight: 400;
   line-height: 1.5;
 }
 
-/* ---------- Kop met naam, ondertitel en uitleg ---------- */
+/* ---------- Kop met naam en ondertitel ----------
+   Logo en naam staan samen als één blok in het midden van de pagina. */
 .tool-kop {
   display: flex;
   align-items: center;
+  justify-content: center;   /* logo + naam samen als één blok in het midden */
   gap: 1rem;
   padding: 1.25rem 1rem;
   border-bottom: 1px solid var(--marmer-ader);
 }
+/* Naam en ondertitel: gecentreerd onder elkaar, zodat een langere
+   ondertitel aan beide kanten evenveel uitsteekt */
+.tool-kop > div:not(.tool-logo) {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
 
-/* Het logo: een rond medaillon zoals een Griekse munt */
+/* Het logo: een rond medaillon zoals een munt */
 .tool-logo {
   flex: none;
   width: 3.25rem;
@@ -51,56 +63,45 @@
 }
 .tool-logo svg { width: 60%; height: 60%; }
 
+/* De naam: dunne hoofdletters */
 .tool-naam {
   margin: 0;
-  font-family: 'Cinzel', 'Trajan Pro', Georgia, serif;
-  font-weight: 700;
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  letter-spacing: 0.04em;
-  line-height: 1.1;
+  font-family: 'Julius Sans One', 'Jost', sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.5rem, 5vw, 2.1rem);
+  letter-spacing: 0.08em;
+  margin-right: -0.08em;     /* laatste letter-spatie telt niet mee, zo staat de naam echt in het midden */
+  line-height: 1.15;
   color: var(--steen);
 }
 
-/* Ondertitel met het i'tje, klapt de uitleg open */
+/* De ondertitel: in dezelfde stijl als de naam, klein en ruim gespatieerd */
 .tool-info summary {
   list-style: none;
-  cursor: pointer;
+  pointer-events: none;      /* niet meer klikbaar: er klapt geen uitleg meer open */
+  cursor: default;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  margin-top: 0.2rem;
   color: var(--steen-zacht);
-  font-size: 0.95rem;
+  font-family: 'Julius Sans One', 'Jost', sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 .tool-info summary::-webkit-details-marker { display: none; }
-.tool-info summary::before { content: '·'; color: var(--accent); font-weight: 600; }
-
-.tool-i {
-  display: inline-grid;
-  place-items: center;
-  width: 1.15rem;
-  height: 1.15rem;
-  border-radius: 50%;
-  border: 1.5px solid var(--accent);
+/* Accentpuntje aan beide kanten, zodat de ondertitel symmetrisch is */
+.tool-info summary::before,
+.tool-info summary::after {
+  content: '·';
   color: var(--accent);
-  font-size: 0.7rem;
   font-weight: 600;
-  font-style: italic;
-  font-family: Georgia, serif;
+  letter-spacing: 0;
 }
-.tool-info[open] .tool-i { background: var(--accent); color: var(--marmer); }
+.tool-info summary::before { margin-right: 0.14em; }  /* compenseert de letter-spatie na de laatste letter */
 
-.tool-info summary:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-
-.tool-info p {
-  margin: 0.5rem 0 0;
-  max-width: 60ch;
-  padding-left: 0.75rem;
-  border-left: 2px solid var(--accent);
-  color: var(--steen-zacht);
-  font-size: 0.9rem;
-  font-style: italic;
-}
+/* Het ⓘ-tje en de uitleg zijn uit de huisstijl gehaald.
+   Staan ze nog in de HTML van een tool, dan worden ze hier verborgen. */
+.tool-i,
+.tool-info p { display: none; }
