@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Oliva</title>
+  <title>Loof</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='29' fill='%23F2F2EF' stroke='%23A8692F' stroke-width='5'/><text x='32' y='46' font-size='38' text-anchor='middle'>🍞</text></svg>">
   <link rel="stylesheet" href="huisstijl.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
   <style>
@@ -75,7 +76,7 @@
     .meal-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
     .meal-tab{border:1.5px solid var(--border);border-radius:20px;padding:5px 14px;font-size:13px;color:var(--muted);background:#fff}
     .meal-tab.active{color:#fff;border-color:transparent}
-    .meal-tab[data-meal="Ontbijt"].active{background:#f59e0b}
+    .meal-tab[data-meal="Ontbijt"].active{background:#0ea5e9}
     .meal-tab[data-meal="Lunch"].active{background:#10b981}
     .meal-tab[data-meal="Diner"].active{background:#6366f1}
     .meal-tab[data-meal="Snack"].active{background:#ec4899}
@@ -129,7 +130,7 @@
     .note-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:middle}
     .meal-group{margin-bottom:14px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}
     .meal-group-hdr{display:flex;justify-content:space-between;align-items:center;padding:7px 11px;border-left:3px solid}
-    .meal-group-hdr[data-meal="Ontbijt"]{background:#fbeec2;border-color:#c08a1e;--c:#6b4a0a}
+    .meal-group-hdr[data-meal="Ontbijt"]{background:#d3ecf8;border-color:#1b8fc4;--c:#0b4a6b}
     .meal-group-hdr[data-meal="Lunch"]{background:#cfe9d5;border-color:#10a05a;--c:#0a5c34}
     .meal-group-hdr[data-meal="Diner"]{background:#d6dcf7;border-color:#4f5fc9;--c:#262f7a}
     .meal-group-hdr[data-meal="Snack"]{background:#f6d3e3;border-color:#c2417a;--c:#7a1043}
@@ -188,7 +189,7 @@
 
     .screen{position:fixed;inset:0;z-index:90;background:var(--marmer);overflow-y:auto;padding:16px 16px 60px}
     .screen-hdr{display:flex;align-items:center;gap:6px;margin-bottom:14px}
-    .screen-hdr h2{font:700 20px 'Cinzel',Georgia,serif;letter-spacing:.04em}
+    .screen-hdr h2{font:400 20px 'Julius Sans One','Jost',sans-serif;letter-spacing:.06em}
     .screen-actions{display:flex;gap:8px;margin-bottom:14px}
     .screen-actions button{flex:1}
     .rc{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px}
@@ -235,14 +236,13 @@
     .toast button{color:#fff;font-size:13px;font-weight:700;text-decoration:underline;padding:0}
   </style>
 </head>
-<body class="huisstijl tool-oliva">
+<body class="huisstijl tool-loof">
 <header class="tool-kop">
-  <div class="tool-logo" aria-hidden="true">🫒</div>
+  <div class="tool-logo" aria-hidden="true">🍞</div>
   <div>
-    <h1 class="tool-naam">Oliva</h1>
+    <h1 class="tool-naam">Loof</h1>
     <details class="tool-info">
-      <summary>Macrotracker <span class="tool-i">i</span></summary>
-      <p>Oliva is Latijn voor olijf: klein, vol goede vetten en het hart van de mediterrane keuken. Eigenlijk is de olijf zelf al een macro-les.</p>
+      <summary>Macrotracker</summary>
     </details>
   </div>
 </header>
@@ -483,8 +483,7 @@ function doUndo(){const f=undoFn;undoFn=null;$('toast').classList.remove('show',
 
 function getSyncCfg(){try{return JSON.parse(localStorage.getItem(SYNC_KEY));}catch(e){return null;}}
 async function fetchGist(id,token){
-  const auth={Authorization:`token ${token}`};
-  const res=await fetch(`https://api.github.com/gists/${id}`,{headers:auth});
+  const res=await fetch(`https://api.github.com/gists/${id}`,{headers:{Authorization:`token ${token}`}});
   if(!res.ok)throw new Error(res.status);
   const f=(await res.json()).files?.[GIST_FILE];
   if(!f)return null;
@@ -504,7 +503,7 @@ async function setupSync(){
       toast('Verbonden met bestaand Gist ✓');
     }else{
       const res=await fetch('https://api.github.com/gists',{method:'POST',headers:{Authorization:`token ${token}`,'Content-Type':'application/json'},
-        body:JSON.stringify({description:'Macros app data',public:false,files:{[GIST_FILE]:{content:JSON.stringify(state)}}})});
+        body:JSON.stringify({description:'Loof – macrotracker data',public:false,files:{[GIST_FILE]:{content:JSON.stringify(state)}}})});
       if(!res.ok)throw new Error(res.status);
       id=(await res.json()).id;
       toast('Nieuw Gist aangemaakt ✓ — kopieer het ID naar je andere apparaat');
@@ -525,7 +524,6 @@ async function pullFromGist(){
   try{const remote=await fetchGist(cfg.gistId,cfg.token);if(!remote)return false;mergeInto(state,remote,true);persist();return true;}
   catch(e){lastSyncError=e.message;return false;}
 }
-function mergeState(remote){mergeInto(state,remote,true);}
 function mergeInto(s,r,longerWins){
   if(r.goals)s.goals=r.goals;
   const cIds=new Set(s.custom.map(c=>c.id));
@@ -933,8 +931,7 @@ function readProductForm(p){
   const v=k=>num($(p+k)?.value),name=($(p+'name')?.value||'').trim();
   if(!name){toast('Vul een productnaam in');return null;}
   if(!v('kcal')){toast('Vul minimaal de kcal in');return null;}
-  const c={id:Date.now(),name,kcal:v('kcal'),eiwit:v('eiwit'),koolhydraten:v('kh'),vet:v('vet'),
-    Voedingsmiddelnaam:name,'Eiwit (g)':v('eiwit'),'Vet (g)':v('vet'),'Koolhydraten (g)':v('kh'),_type:'custom',source:'manual'};
+  const c={id:Date.now(),name,kcal:v('kcal'),eiwit:v('eiwit'),koolhydraten:v('kh'),vet:v('vet'),_type:'custom'};
   state.custom.push(c);customFuse=null;return c;
 }
 function matchCardHtml(item,onclick,sel){
@@ -1123,7 +1120,7 @@ function deleteCustom(i){
 function exportData(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));
-  a.download=`macros-export-${todayKey()}.json`;a.click();URL.revokeObjectURL(a.href);
+  a.download=`loof-export-${todayKey()}.json`;a.click();URL.revokeObjectURL(a.href);
   toast('Data geëxporteerd ✓');
 }
 function importData(){
@@ -1187,7 +1184,6 @@ async function exportFodmapPdf(){
   toast('PDF gedownload ✓');
 }
 
-$('select-meal').innerHTML=MEALS.map(m=>`<option>${m}</option>`).join('');
 render();
 setTimeout(()=>searchAll('ei'),300);
 pullFromGist().then(ok=>{if(ok)render();});
