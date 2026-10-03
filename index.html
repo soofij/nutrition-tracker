@@ -317,8 +317,10 @@
       <div id="recipe-list"></div>
     </div>
     <div id="recipe-builder" class="hidden">
-      <div class="form-row full"><div><div class="form-label">Naam</div>
-        <input class="form-input" id="rb-name" type="text" placeholder="bv. Choco Bliss Ball"></div></div>
+      <div class="form-row" style="grid-template-columns:1fr 130px"><div><div class="form-label">Naam</div>
+        <input class="form-input" id="rb-name" type="text" placeholder="bv. Choco Bliss Ball"></div>
+        <div><div class="form-label">Aantal porties</div>
+        <input class="form-input" id="rb-servings" type="number" min="0.25" step="0.25" value="1" inputmode="decimal" oninput="rbServings(this.value)"></div></div>
       <div class="form-row full"><div><div class="form-label">Ingrediënt zoeken</div>
         <input class="form-input" id="rb-search" type="text" placeholder="Zoeken…" oninput="rbSearch(this.value)"></div></div>
       <div id="rb-results"></div>
@@ -360,9 +362,9 @@
         <button class="mode-btn" id="mode-pct" onclick="setGoalMode('pct')">Percentages</button>
       </div>
       <div class="goal-row"><span>Calorieën</span><div class="goal-field"><input class="goal-input" id="g-kcal" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit">kcal</span></div></div>
-      <div class="goal-row"><span>Eiwit</span><div class="goal-field"><input class="goal-input" id="g-eiwit" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit">g</span></div></div>
-      <div class="goal-row"><span>Koolhydraten</span><div class="goal-field"><input class="goal-input" id="g-kh" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit">g</span></div></div>
       <div class="goal-row"><span>Vetten</span><div class="goal-field"><input class="goal-input" id="g-vet" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit">g</span></div></div>
+      <div class="goal-row"><span>Koolhydraten</span><div class="goal-field"><input class="goal-input" id="g-kh" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit">g</span></div></div>
+      <div class="goal-row"><span>Eiwit</span><div class="goal-field"><input class="goal-input" id="g-eiwit" type="number" min="0" oninput="updateGoalCalc()"><span class="goal-unit">g</span></div></div>
       <div class="kcal-warning hidden" id="kcal-warning"></div>
       <div class="modal-footer">
         <button class="btn-ghost" onclick="closeModal()">Annuleer</button>
@@ -434,7 +436,7 @@ const MEALS=['Ontbijt','Lunch','Diner','Snack'];
 const KCAL_PER_G={eiwit:4.1,koolhydraten:4.1,vet:8.8};
 const STORAGE_KEY='macros-data',SYNC_KEY='macros-sync',GIST_FILE='macros-data.json';
 const MACRO_COLORS={eiwit:'var(--blue)',koolhydraten:'var(--accent)',vet:'#8b5cf6'};
-const MACRO_LABELS={eiwit:'Eiwit',koolhydraten:'Koolhydraten',vet:'Vet'};
+const MACRO_LABELS={vet:'Vet',koolhydraten:'Koolhydraten',eiwit:'Eiwit'};
 const FAV_PORTION_GRAMS=100,MAX_FAVS=12;
 const $=id=>document.getElementById(id);
 
@@ -544,8 +546,10 @@ function mergeInto(s,r,longerWins){
     const cur=s.logs[d];
     if(!cur?.length||(longerWins&&(l||[]).length>cur.length))s.logs[d]=l;
   });
-  const rIds=new Set(s.recipes.map(x=>x.id));
-  (r.recipes||[]).forEach(x=>{if(!rIds.has(x.id))s.recipes.push(x);});
+  (r.recipes||[]).forEach(x=>{
+    const cur=s.recipes.find(y=>y.id===x.id);
+    if(!cur)s.recipes.push(x);else if((x.updated||0)>(cur.updated||0))Object.assign(cur,x);
+  });
   Object.entries(r.symptomNotes||{}).forEach(([d,rem])=>{
     const n=mergeNote(s.symptomNotes[d]||'',rem||'');if(n)s.symptomNotes[d]=n;
   });
@@ -627,15 +631,33 @@ function calcMacros(item,grams,meal){
 function sumMacros(items){
   return items.reduce((a,e)=>({kcal:a.kcal+e.kcal,eiwit:r1(a.eiwit+e.eiwit),vet:r1(a.vet+e.vet),koolhydraten:r1(a.koolhydraten+e.koolhydraten)}),{kcal:0,eiwit:0,vet:0,koolhydraten:0});
 }
-function macroText(m){return `${m.kcal} kcal · E ${m.eiwit}g · KH ${m.koolhydraten}g · V ${m.vet}g`;}
-function recipeMacros(recipe,portion=1){return sumMacros(recipe.ingredients.map(i=>calcMacros(i.item,i.grams*portion)));}
-function calcRecipeEntry(recipe,portion=1,meal){
-  const ings=recipe.ingredients.map(i=>calcMacros(i.item,i.grams*portion,meal)),t=sumMacros(ings);
-  return{name:recipe.name,meal,portion,isRecipe:true,recipeId:recipe.id,...t,
+function macroText(m){return `${m.kcal} kcal · V ${m.vet}g · KH ${m.koolhydraten}g · E ${m.eiwit}g`;}
+function recipeMacros(recipe,factor=1){return sumMacros(recipe.ingredients.map(i=>calcMacros(i.item,i.grams*factor)));}
+function recipeServings(r){return Math.max(num(r?.servings)||1,0.25);}
+function recipeWeight(r){return r1(r.ingredients.reduce((s,i)=>s+num(i.grams),0));}
+// amt: {portion, servings} (aantal porties van een recept dat 'servings' porties oplevert) of {grams} (gewogen hoeveelheid)
+function amtFactor(r,amt){
+  if(amt.grams>0){const w=recipeWeight(r);return w>0?amt.grams/w:0;}
+  return (amt.portion||1)/(amt.servings||1);
+}
+function amtLabel(amt){
+  if(amt.grams>0)return amt.grams+'g';
+  const p=amt.portion??1;return `${String(p).replace('.',',')} ${p<=1?'portie':'porties'}`;
+}
+function calcRecipeEntry(recipe,amt,meal){
+  const f=amtFactor(recipe,amt),ings=recipe.ingredients.map(i=>calcMacros(i.item,r1(i.grams*f),meal)),t=sumMacros(ings);
+  const a=amt.grams>0?{grams:amt.grams}:{portion:amt.portion??1,servings:amt.servings||1};
+  return{name:recipe.name,meal,...a,isRecipe:true,recipeId:recipe.id,...t,
     ingredients:ings.map(({name,grams,kcal,eiwit,vet,koolhydraten})=>({name,grams,kcal,eiwit,vet,koolhydraten}))};
 }
+function entryAmt(e){return e.grams>0?{grams:e.grams}:{portion:e.portion??1,servings:e.servings||1};}
+function defaultRecipeAmt(r){
+  const l=r.last;
+  if(l&&l.grams>0)return{grams:l.grams};
+  return{portion:l&&l.portion>0?l.portion:1,servings:recipeServings(r)};
+}
 function reCalcEntry(e){
-  if(e.isRecipe){const r=state.recipes.find(r=>r.id===e.recipeId);return r?calcRecipeEntry(r,e.portion,e.meal):e;}
+  if(e.isRecipe){const r=state.recipes.find(r=>r.id===e.recipeId);return r?calcRecipeEntry(r,entryAmt(e),e.meal):e;}
   return e._item?calcMacros(e._item,e.grams,e.meal):e;
 }
 function recall(q){return state.memory[mk(q)]||null;}
@@ -721,7 +743,7 @@ function renderMacros(){
       <div class="mn"><span class="mv">${v}</span><span class="mg">/ ${gv}${unit}</span><span class="mg" style="font-size:12px;font-weight:600;color:${p>100?'var(--red)':p>=80?'var(--green)':'var(--muted)'}">${p}%</span></div>
       <div class="bar"><div class="bf" style="width:${Math.min(p,100)}%"></div></div></div>`;
   };
-  $('macros-grid').innerHTML=card('kcal','Calorieën',' kcal',true)+card('eiwit','Eiwit','g')+card('koolhydraten','Koolhydraten','g')+card('vet','Vetten','g');
+  $('macros-grid').innerHTML=card('kcal','Calorieën',' kcal',true)+card('vet','Vetten','g')+card('koolhydraten','Koolhydraten','g')+card('eiwit','Eiwit','g');
 }
 function openMacroDetail(key){
   const log=getLog(currentDate),total=sumMacros(log)[key],rows=[];
@@ -742,7 +764,7 @@ function openMacroDetail(key){
 function closeMacroDetail(){$('macro-modal').classList.add('hidden');}
 function macroBadges(m,big){
   const c=big?' total':'';
-  return [['eiwit','E'],['koolhydraten','K'],['vet','V']].map(([k,l])=>`<span class="macro-dot${c}" style="background:${MACRO_COLORS[k]}">${l}</span><span class="macro-val${c}">${m[k]}g</span>`).join('');
+  return [['vet','V'],['koolhydraten','K'],['eiwit','E']].map(([k,l])=>`<span class="macro-dot${c}" style="background:${MACRO_COLORS[k]}">${l}</span><span class="macro-val${c}">${m[k]}g</span>`).join('');
 }
 function dayLabel(d){
   const t=todayKey();
@@ -768,14 +790,14 @@ function renderLog(){
   renderDayNote();
 }
 function renderRow(e){
-  const i=e._i,r=e.isRecipe,open=r&&expandedRecipes.has(i);
+  const i=e._i,r=e.isRecipe,rp=r&&!(e.grams>0),open=r&&expandedRecipes.has(i);
   const check=selectMode&&!r?`<input class="select-check" type="checkbox" ${selectedIdx.has(i)?'checked':''} onchange="toggleSelectItem(${i})">`:'';
   const name=r?`<button class="recipe-toggle${open?' open':''}" onclick="toggleRecipeExpand(${i})" aria-label="Ingrediënten tonen">▸</button>${esc(e.name)}<span class="badge">Maaltijd</span>`:esc(e.name);
   const acts=selectMode?'':`<button class="row-btn row-del" onclick="deleteEntry(${i})" aria-label="Verwijder">✕</button><button class="row-btn" onclick="openSheet(${i})" aria-label="Meer opties">⋯</button>`;
   const ings=open?`<div class="recipe-ingredients">${(e.ingredients||[]).map(g=>`<div class="recipe-ingredient-row"><span>${esc(g.name)} — ${g.grams}g</span><span>${g.kcal} kcal</span></div>`).join('')}</div>`:'';
   return `<div class="log-item">${check}<div class="log-info"><div class="log-name">${name}</div>
-    <div class="log-sub"><button class="log-grams-btn" id="gbtn-${i}" onclick="startEditGrams(${i})">${r?e.portion+'x':e.grams+'g'}</button>
-    <input class="log-grams-edit hidden" id="gedit-${i}" type="number" min="${r?0.25:1}" step="${r?0.25:'any'}" value="${r?e.portion:e.grams}" onblur="commitGrams(${i})" onkeydown="gramsKey(event,${i})"></div></div>
+    <div class="log-sub"><button class="log-grams-btn" id="gbtn-${i}" onclick="startEditGrams(${i})">${r?esc(amtLabel(entryAmt(e))):e.grams+'g'}</button>
+    <input class="log-grams-edit hidden" id="gedit-${i}" type="number" min="${rp?0.25:1}" step="${rp?0.25:'any'}" value="${rp?(e.portion??1):e.grams}" onblur="commitGrams(${i})" onkeydown="gramsKey(event,${i})"></div></div>
     <div class="log-right"><div class="log-kcal">${e.kcal} kcal</div><div>${macroBadges(e)}</div></div>${acts}</div>${ings}`;
 }
 function toggleRecipeExpand(i){expandedRecipes.has(i)?expandedRecipes.delete(i):expandedRecipes.add(i);renderLog();}
@@ -784,7 +806,10 @@ function cancelEditGrams(i){$(`gbtn-${i}`)?.classList.remove('hidden');$(`gedit-
 function commitGrams(i){
   const inp=$(`gedit-${i}`),log=getLog(currentDate),e=log[i];if(!inp||!e)return;
   const v=num(inp.value);if(v<=0)return cancelEditGrams(i);
-  e[e.isRecipe?'portion':'grams']=v;log[i]=reCalcEntry(e);save();render();
+  const rp=e.isRecipe&&!(e.grams>0);
+  e[rp?'portion':'grams']=v;log[i]=reCalcEntry(e);
+  if(e.isRecipe){const rc=state.recipes.find(x=>x.id===e.recipeId);if(rc)rc.last=entryAmt(log[i]);}
+  save();render();
   toast(e.isRecipe?'Portie bijgewerkt ✓':'Hoeveelheid bijgewerkt ✓');
 }
 function gramsKey(ev,i){if(ev.key==='Enter'){ev.preventDefault();commitGrams(i);}else if(ev.key==='Escape'){ev.preventDefault();cancelEditGrams(i);}}
@@ -846,7 +871,7 @@ function makeRecipeFromSelection(){
   const recipe={id:Date.now(),name,ingredients:idxs.slice().reverse().map(i=>({item:log[i]._item,grams:log[i].grams}))};
   state.recipes.push(recipe);
   idxs.forEach(i=>log.splice(i,1));
-  log.push(calcRecipeEntry(recipe,1,meal));
+  log.push(calcRecipeEntry(recipe,{portion:1,servings:1},meal));
   selectMode=false;selectedIdx=new Set();$('select-recipe-name').value='';
   save();render();toast(`'${name}' aangemaakt en toegevoegd ✓`);
 }
@@ -864,16 +889,24 @@ function showRecipeList(){
   const list=[...state.recipes].sort((a,b)=>!!b.pinned-!!a.pinned);
   $('recipe-list').innerHTML=list.length?list.map(r=>`<div class="rc">
     <div class="rc-name">${esc(r.name)}<button class="rc-star${r.pinned?' on':''}" onclick="togglePinRecipe('${esc(r.id)}')" aria-label="Vastzetten">${r.pinned?'★':'☆'}</button></div>
-    <div class="sub">${r.ingredients.length} ingrediënt${r.ingredients.length===1?'':'en'} · ${recipeMacros(r).kcal} kcal per portie</div>
+    <div class="sub">${recipeSummary(r)}</div>
     <div class="rc-actions"><button onclick="logRecipe('${esc(r.id)}')">＋ Loggen</button><button onclick="editRecipe('${esc(r.id)}')" aria-label="Bewerken">✎</button><button class="danger" onclick="deleteRecipe('${esc(r.id)}')" aria-label="Verwijderen">✕</button></div>
   </div>`).join(''):'<div class="empty">Nog geen maaltijden. Maak er een aan, of voeg gelogde items samen.</div>';
 }
+function recipeSummary(r){
+  const n=r.ingredients.length,sv=recipeServings(r),per=Math.round(recipeMacros(r,1/sv).kcal);
+  return `${n} ingrediënt${n===1?'':'en'} · ${sv>1?`${String(sv).replace('.',',')} porties · `:''}${per} kcal per portie`;
+}
 function findRecipe(id){return state.recipes.find(r=>String(r.id)===String(id));}
-function togglePinRecipe(id){const r=findRecipe(id);if(!r)return;r.pinned=!r.pinned;save();showRecipeList();}
+function togglePinRecipe(id){const r=findRecipe(id);if(!r)return;r.pinned=!r.pinned;r.updated=Date.now();save();showRecipeList();}
 function logRecipe(id){
   const r=findRecipe(id);if(!r)return;
-  closeMeals();pending.push({mode:'recipe-portion',recipe:r,portion:1});renderPending();
+  closeMeals();pending.push({mode:'recipe-portion',recipe:r,...recipePendingAmt(r)});renderPending();
   $('pending-section').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function recipePendingAmt(r){
+  const a=defaultRecipeAmt(r),sv=recipeServings(r);
+  return a.grams>0?{unit:'g',grams:a.grams,portion:1,servings:sv}:{unit:'p',portion:a.portion,grams:recipeWeight(r)?r1(recipeWeight(r)*a.portion/sv):0,servings:sv};
 }
 function deleteRecipe(id){
   const i=state.recipes.findIndex(r=>String(r.id)===String(id));if(i<0)return;
@@ -887,13 +920,13 @@ function startSelectFromLog(){
   $('select-meal').innerHTML=MEALS.map(m=>`<option>${m}</option>`).join('');$('select-meal').value=activeMeal;
   renderLog();$('log-section').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function newRecipe(){openBuilder({id:null,name:'',ingredients:[]});}
-function editRecipe(id){const r=findRecipe(id);if(r)openBuilder({id:r.id,name:r.name,ingredients:r.ingredients.map(i=>({...i}))});}
+function newRecipe(){openBuilder({id:null,name:'',servings:1,ingredients:[]});}
+function editRecipe(id){const r=findRecipe(id);if(r)openBuilder({id:r.id,name:r.name,servings:recipeServings(r),ingredients:r.ingredients.map(i=>({...i}))});}
 function openBuilder(b){
   recipeBuilder={...b,results:[],manual:false};
   $('meals-title').textContent=b.id?'Maaltijd bewerken':'Nieuwe maaltijd';
   $('meals-list-view').classList.add('hidden');$('recipe-builder').classList.remove('hidden');
-  $('rb-name').value=b.name;$('rb-search').value='';
+  $('rb-name').value=b.name;$('rb-servings').value=b.servings||1;$('rb-search').value='';
   renderBuilder();$('rb-name').focus();
 }
 function renderBuilder(){
@@ -902,7 +935,7 @@ function renderBuilder(){
   $('rb-manual').innerHTML=b.manual?productFormHtml('rbm-','Handmatig ingrediënt','rbAddManual()','Toevoegen aan maaltijd',true):'';
   $('rb-ingredients').innerHTML=b.ingredients.length?b.ingredients.map((g,i)=>`<div class="ing-row"><span>${esc(itemName(g.item))}</span>
     <span><input class="form-input" type="number" min="1" value="${g.grams}" oninput="rbGrams(${i},this.value)"> g <button class="custom-del" onclick="recipeBuilder.ingredients.splice(${i},1);renderBuilder()" aria-label="Verwijder">✕</button></span></div>`).join('')
-    +`<div class="sub" id="rb-totals">Totaal: ${macroText(recipeMacros(b))}</div>`:'<div class="empty">Nog geen ingrediënten toegevoegd.</div>';
+    +`<div class="sub" id="rb-totals">${rbTotalsText(b)}</div>`:'<div class="empty">Nog geen ingrediënten toegevoegd.</div>';
 }
 function rbSearch(v){if(!recipeBuilder)return;recipeBuilder.results=v.trim()?searchAll(v,6):[];renderBuilder();}
 function rbAdd(i){const it=recipeBuilder.results[i];if(!it)return;recipeBuilder.ingredients.push({item:it,grams:100});recipeBuilder.results=[];$('rb-search').value='';renderBuilder();}
@@ -912,14 +945,21 @@ function rbAddManual(){
   recipeBuilder.ingredients.push({item:c,grams:num($('rbm-grams').value)||100});recipeBuilder.manual=false;renderBuilder();
   toast(`'${c.name}' toegevoegd ✓`);
 }
-function rbGrams(i,v){const g=num(v);if(g<=0)return;recipeBuilder.ingredients[i].grams=g;$('rb-totals').textContent='Totaal: '+macroText(recipeMacros(recipeBuilder));}
+function rbTotalsText(b){
+  const sv=recipeServings(b),tot=`Totaal (${recipeWeight(b)}g): ${macroText(recipeMacros(b))}`;
+  return sv>1?`${tot}<br>Per portie (${r1(recipeWeight(b)/sv)}g): ${macroText(recipeMacros(b,1/sv))}`:tot;
+}
+function rbUpdTotals(){const el=$('rb-totals');if(el&&recipeBuilder)el.innerHTML=rbTotalsText(recipeBuilder);}
+function rbGrams(i,v){const g=num(v);if(g<=0)return;recipeBuilder.ingredients[i].grams=g;rbUpdTotals();}
+function rbServings(v){const n=num(v);if(!recipeBuilder||n<=0)return;recipeBuilder.servings=n;rbUpdTotals();}
 function saveRecipe(){
   const b=recipeBuilder;if(!b)return;
   const name=$('rb-name').value.trim();
   if(!name)return toast('Geef de maaltijd een naam');
   if(!b.ingredients.length)return toast('Voeg minstens 1 ingrediënt toe');
   const r=b.id&&findRecipe(b.id);
-  if(r){r.name=name;r.ingredients=b.ingredients;}else state.recipes.push({id:Date.now(),name,ingredients:b.ingredients});
+  const servings=Math.max(num($('rb-servings').value)||1,0.25);
+  if(r){r.name=name;r.ingredients=b.ingredients;r.servings=servings;r.updated=Date.now();}else state.recipes.push({id:Date.now(),name,servings,updated:Date.now(),ingredients:b.ingredients});
   save();showRecipeList();renderMealsCard();toast(`'${name}' opgeslagen ✓`);
 }
 
@@ -927,8 +967,8 @@ function productFormHtml(p,title,onclick,label,withGrams){
   const f=(k,l)=>`<div><div class="form-label">${l}</div><input class="form-input" id="${p}${k}" type="number" min="0"${k==='grams'?' value="100"':''}></div>`;
   return `<div class="manual-form"><h4>${title}</h4>
     <div class="form-row full"><div><div class="form-label">Naam</div><input class="form-input" id="${p}name" type="text"></div></div>
-    <div class="form-row">${f('kcal','kcal /100g')}${f('eiwit','Eiwit /100g')}</div>
-    <div class="form-row">${f('kh','Koolhydr. /100g')}${f('vet','Vet /100g')}</div>
+    <div class="form-row">${f('kcal','kcal /100g')}${f('vet','Vet /100g')}</div>
+    <div class="form-row">${f('kh','Koolhydr. /100g')}${f('eiwit','Eiwit /100g')}</div>
     ${withGrams?`<div class="form-row">${f('grams','Hoeveelheid (g)')}</div>`:''}
     <div class="form-actions"><button class="btn-blue" onclick="${onclick}">${label}</button></div></div>`;
 }
@@ -944,7 +984,7 @@ function matchCardHtml(item,onclick,sel){
   return `<div class="match-card${c?' custom':''}${sel?' sel':''}" onclick="${onclick}">
     <div><div class="match-name">${isFavProduct(item)?'<span class="star-mini">★</span>':''}${esc(itemName(item))}${c?'<span class="badge">Eigen</span>':''}</div>
     ${!c&&item.Synoniem?`<div class="sub">${esc(item.Synoniem.slice(0,70))}</div>`:''}
-    <div class="sub">${num(item.kcal)} kcal · E ${macroOf(item,'eiwit','Eiwit (g)')}g · KH ${macroOf(item,'koolhydraten','Koolhydraten (g)')}g · V ${macroOf(item,'vet','Vet (g)')}g per 100g</div></div>
+    <div class="sub">${num(item.kcal)} kcal · V ${macroOf(item,'vet','Vet (g)')}g · KH ${macroOf(item,'koolhydraten','Koolhydraten (g)')}g · E ${macroOf(item,'eiwit','Eiwit (g)')}g per 100g</div></div>
     <span class="match-check">✓</span></div>`;
 }
 
@@ -965,9 +1005,15 @@ function portionRowHtml(pi,product){
 function renderPending(){
   $('pending-section').classList.toggle('hidden',!pending.length);
   $('pending-items').innerHTML=pending.map((p,pi)=>{
-    if(p.mode==='recipe-portion')return `<div class="pend-item"><div class="pend-label"><strong>${esc(p.recipe.name)}</strong>
-      <span class="grams-field"><input class="grams-inp" id="rpp-${pi}" type="number" min="0.25" step="0.25" value="${p.portion}" oninput="updPG(${pi},this.value)"><span class="grams-unit">x</span></span></div>
-      <div class="mem-card"><div><div class="mem-name">${esc(p.recipe.name)}<span class="badge">Maaltijd</span></div><div class="sub" id="psub-${pi}">${p.portion}x · ${macroText(recipeMacros(p.recipe,p.portion))}</div></div></div></div>`;
+    if(p.mode==='recipe-portion'){
+      const g=p.unit==='g',w=recipeWeight(p.recipe);
+      return `<div class="pend-item"><div class="pend-label"><strong>${esc(p.recipe.name)}</strong>
+      <span class="grams-field"><input class="grams-inp" id="rpp-${pi}" type="number" min="${g?1:0.25}" step="${g?'any':0.25}" value="${g?p.grams:p.portion}" oninput="updPG(${pi},this.value)"><span class="grams-unit" id="rpu-${pi}">${g?'g':(p.portion<=1?'portie':'porties')}</span></span>
+      <span class="mode-toggle" style="margin:0"><button class="mode-btn${g?'':' active'}" onclick="setRecipeUnit(${pi},'p')">porties</button><button class="mode-btn${g?' active':''}" onclick="setRecipeUnit(${pi},'g')">gram</button></span></div>
+      <div class="mem-card"><div><div class="mem-name">${esc(p.recipe.name)}<span class="badge">Maaltijd</span></div><div class="sub" id="psub-${pi}">${recipePendSub(p)}</div>
+      <div class="portion-row">Heel recept${w?` (${w}g)`:''} =
+        <span class="grams-field"><input class="grams-inp" type="number" min="0.25" step="0.25" value="${p.servings}" oninput="updRecipeServings(${pi},this.value)"><span class="grams-unit">porties</span></span></div></div></div></div>`;
+    }
     if(p.mode==='unit-ask')return `<div class="pend-item"><div class="pend-label">Jij typte: <strong>${esc(p.query)}</strong></div>
       <div class="manual-form"><h4>Hoeveel gram is 1 ${esc(p.unitKey)}?</h4><input class="form-input" id="ua-${pi}" type="number" min="1" placeholder="bijv. 90" inputmode="decimal" onkeydown="if(event.key==='Enter'){event.preventDefault();resolveUnitAsk(${pi})}">
       <div class="form-actions"><button class="btn-blue" onclick="resolveUnitAsk(${pi})">Doorgaan</button></div></div></div>`;
@@ -1023,9 +1069,28 @@ function resolveUnitAsk(pi){
   state.memory['__unit__'+p.unitKey]=g;save();
   pending[pi]=newPending({query:p.query,grams:r1(g*(p.unitQty||1))});renderPending();
 }
+function recipePendAmt(p){return p.unit==='g'?{grams:p.grams}:{portion:p.portion,servings:p.servings};}
+function recipePendSub(p){
+  const a=recipePendAmt(p),f=amtFactor(p.recipe,a),w=recipeWeight(p.recipe);
+  const extra=p.unit==='g'?(p.servings>1&&w?` (≈ ${String(r1(f*p.servings)).replace('.',',')} portie)`:''):(w?` (≈ ${r1(w*f)}g)`:'');
+  return `${amtLabel(a)}${extra} · ${macroText(recipeMacros(p.recipe,f))}`;
+}
+function setRecipeUnit(pi,u){
+  const p=pending[pi];if(!p||p.unit===u)return;
+  const w=recipeWeight(p.recipe),f=amtFactor(p.recipe,recipePendAmt(p));
+  if(u==='g')p.grams=Math.round(w*f)||p.grams||100;else p.portion=Math.max(0.25,Math.round(f*p.servings*4)/4)||1;
+  p.unit=u;renderPending();
+}
+function updRecipeServings(pi,val){
+  const p=pending[pi],n=num(val);if(!p||n<=0)return;
+  p.servings=n;$(`psub-${pi}`).textContent=recipePendSub(p);
+}
 function updPG(pi,val){
   const p=pending[pi],v=num(val);if(v<=0)return;
-  if(p.mode==='recipe-portion'){p.portion=v;$(`psub-${pi}`).textContent=`${v}x · ${macroText(recipeMacros(p.recipe,v))}`;return;}
+  if(p.mode==='recipe-portion'){
+    if(p.unit==='g')p.grams=v;else{p.portion=v;const u=$(`rpu-${pi}`);if(u)u.textContent=v<=1?'portie':'porties';}
+    $(`psub-${pi}`).textContent=recipePendSub(p);return;
+  }
   p.grams=v;
   if(p.mode==='memory')$(`psub-${pi}`).textContent=`${v}g · ${macroText(calcMacros(p.memory,v))}`;
 }
@@ -1049,7 +1114,11 @@ function confirmAll(){
   if(pending.some(p=>p.mode==='unit-ask'))return toast('Beantwoord eerst hoeveel gram 1 stuk/eenheid is');
   const log=getLog(currentDate);let added=0;
   pending.forEach(p=>{
-    if(p.mode==='recipe-portion'){log.push(calcRecipeEntry(p.recipe,p.portion,activeMeal));added++;return;}
+    if(p.mode==='recipe-portion'){
+      const r=findRecipe(p.recipe.id)||p.recipe,a=recipePendAmt(p);
+      if(recipeServings(r)!==p.servings){r.servings=p.servings;r.updated=Date.now();}
+      log.push(calcRecipeEntry(r,a,activeMeal));r.last=a;added++;return;
+    }
     const item=pendingProduct(p);
     if(item){log.push(calcMacros(item,p.grams,activeMeal));state.memory[mk(p.query)]=item;bumpFreq(item,p.grams);added++;}
   });
@@ -1060,7 +1129,7 @@ function confirmAll(){
 function goDate(d){currentDate=d;pending=[];expandedRecipes=new Set();selectMode=false;selectedIdx=new Set();renderPending();render();}
 function shiftDay(n){goDate(shiftStr(currentDate,n));}
 
-const GOAL_IDS={eiwit:'g-eiwit',koolhydraten:'g-kh',vet:'g-vet'};
+const GOAL_IDS={vet:'g-vet',koolhydraten:'g-kh',eiwit:'g-eiwit'};
 function gv(id){return num($(id).value);}
 function openModal(){
   goalMode='gram';setModalTab('goals');applyGoalMode();
@@ -1114,7 +1183,7 @@ function saveGoals(){
 }
 function renderCustomList(){
   $('custom-list').innerHTML=state.custom.length?state.custom.map((p,i)=>`<div class="custom-item"><div>${esc(p.name)}
-    <div class="sub">${p.kcal} kcal · E ${p.eiwit}g · KH ${p.koolhydraten}g · V ${p.vet}g per 100g</div></div>
+    <div class="sub">${p.kcal} kcal · V ${p.vet}g · KH ${p.koolhydraten}g · E ${p.eiwit}g per 100g</div></div>
     <button class="custom-del" onclick="deleteCustom(${i})" aria-label="Verwijder">✕</button></div>`).join(''):'<div class="empty">Nog geen eigen producten opgeslagen.</div>';
 }
 function deleteCustom(i){
@@ -1177,8 +1246,8 @@ async function exportFodmapPdf(){
       const items=log.filter(e=>e.meal===meal);if(!items.length)return;
       line(meal,{bold:true,size:11});
       items.forEach(e=>{
-        const m=`${e.kcal} kcal (E ${e.eiwit}g · KH ${e.koolhydraten}g · V ${e.vet}g)`;
-        if(e.isRecipe){line(`  ${e.name} (${e.portion}x) — ${m}`);(e.ingredients||[]).forEach(i=>line(`    - ${i.name} (${i.grams}g)`));}
+        const m=`${e.kcal} kcal (V ${e.vet}g · KH ${e.koolhydraten}g · E ${e.eiwit}g)`;
+        if(e.isRecipe){line(`  ${e.name} (${amtLabel(entryAmt(e))}) — ${m}`);(e.ingredients||[]).forEach(i=>line(`    - ${i.name} (${i.grams}g)`));}
         else line(`  ${e.name} — ${e.grams}g — ${m}`);
       });
     });
