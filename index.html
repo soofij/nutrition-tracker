@@ -127,6 +127,22 @@
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
     .form-row.full{grid-template-columns:1fr}
     .form-label,.sync-label{margin-bottom:4px}
+    .off-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .off-status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:8px 0 0}
+    .off-status.err{color:var(--red)}
+    .off-spin{flex:none;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+    .badge.off{background:var(--accent-bg);color:var(--accent)}
+    .scan-btn{flex:none;padding:9px 11px;display:flex;align-items:center}
+    .scan-btn svg{width:22px;height:22px;display:block}
+    .scan-wrap{position:fixed;inset:0;z-index:200;background:#000;display:flex;flex-direction:column}
+    .scan-view{position:relative;flex:1;min-height:0;overflow:hidden}
+    .scan-view video{width:100%;height:100%;object-fit:cover;display:block}
+    .scan-frame{position:absolute;left:10%;right:10%;top:50%;height:120px;transform:translateY(-50%);border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 100vmax rgba(0,0,0,.35);pointer-events:none}
+    .scan-bar{background:#fff;padding:14px 16px calc(14px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+    .scan-msg{font-size:14px;font-weight:600;text-align:center}
+    .scan-msg.err{color:var(--red);font-weight:500}
+    .scan-manual{display:flex;gap:8px}
+    .scan-manual .form-input{flex:1}
     .not-found-row{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--muted)}
     .divider{height:1px;background:var(--border);margin:20px 0}
 
@@ -276,6 +292,7 @@
   <div class="input-hint">Bijv. <em>35g havermout melk 200ml</em> of <em>havermout 35g</em></div>
   <div class="input-row">
     <textarea id="food-input" rows="1" placeholder="Wat heb je gegeten?" oninput="autoResize(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();handleAdd()}"></textarea>
+    <button class="btn-outline scan-btn" onclick="openScan(null)" aria-label="Scan barcode" title="Scan barcode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10.5 8v8M13.5 8v8M17 8v8"/></svg></button>
     <button class="btn-dark" onclick="handleAdd()">Voeg toe</button>
   </div>
 
@@ -432,6 +449,15 @@
   </div>
 </div>
 
+<div class="scan-wrap hidden" id="scan-screen">
+  <div class="scan-view"><video id="scan-video" playsinline autoplay muted></video><div class="scan-frame"></div></div>
+  <div class="scan-bar">
+    <div class="scan-msg" id="scan-msg"></div>
+    <div class="scan-manual"><input class="form-input" id="scan-code" type="text" inputmode="numeric" autocomplete="off" placeholder="Of typ de cijfers onder de barcode" onkeydown="if(event.key==='Enter'){event.preventDefault();scanManual()}"><button class="btn-blue" onclick="scanManual()">Zoek</button></div>
+    <button class="btn-outline" onclick="closeScan()">Sluiten</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -445,7 +471,7 @@ const FAV_PORTION_GRAMS=100,MAX_FAVS=12;
 const $=id=>document.getElementById(id);
 
 let state=loadState(),nevoFuse=null,customFuse=null,pending=[],currentDate=todayKey(),activeMeal='Ontbijt',goalMode='gram';
-let lastSyncError='',expandedRecipes=new Set(),selectMode=false,selectedIdx=new Set(),recipeBuilder=null,favList=[],portionItem=null,toastTimer=null,undoFn=null;
+let lastSyncError='',expandedRecipes=new Set(),selectMode=false,selectedIdx=new Set(),recipeBuilder=null,favList=[],portionItem=null,toastTimer=null,undoFn=null,scan=null;
 
 function defaultState(){return{goals:{kcal:2000,eiwit:150,vet:70,koolhydraten:200},logs:{},memory:{},custom:[],freq:{},recipes:[],symptomNotes:{},portions:{}};}
 function ensureFields(s){const d=defaultState();for(const k in d)if(!s[k])s[k]=d[k];s.freq=migrateFreq(s.freq);for(const k in s.symptomNotes)s.symptomNotes[k]=mergeNote(s.symptomNotes[k]);s.recipes.forEach((r,i)=>{if(r.id==null)r.id=Date.now()+i;});return s;}
@@ -484,7 +510,7 @@ function toast(msg,undo){
   const el=$('toast');undoFn=undo||null;
   el.innerHTML=esc(msg)+(undo?'<button onclick="doUndo()">Ongedaan maken</button>':'');
   el.classList.toggle('undo',!!undo);el.classList.add('show');
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.classList.remove('show','undo');undoFn=null;},undo?5000:2400);
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.classList.remove('show','undo');undoFn=null;},undo?5000:Math.max(2400,msg.length*55));
 }
 function doUndo(){const f=undoFn;undoFn=null;$('toast').classList.remove('show','undo');if(f)f();}
 
@@ -624,6 +650,134 @@ function parseInput(text){
     const part=nameFirst?text.slice(i?qs[i-1].end:0,q.start):text.slice(q.end,i<qs.length-1?qs[i+1].start:text.length);
     return{grams:q.grams,query:part.trim().replace(/,\s*$/,'').trim()};
   }).filter(x=>x.query&&x.grams>0);
+}
+
+// ── Open Food Facts: zoeken op naam (alleen NL) en opzoeken op barcode ──
+const OFF_FIELDS='code,product_name,product_name_nl,brands,nutriments';
+const OFF_SCANNER='https://cdn.jsdelivr.net/npm/barcode-detector@2.3.1/dist/es/pure.min.js';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function offToItem(p){
+  const n=p?.nutriments,code=String(p?.code||'');if(!n||!code)return null;
+  const kj=n['energy-kj_100g']??n.energy_100g,kcal=n['energy-kcal_100g']??(kj!=null?kj/4.184:null);
+  let name=(p.product_name_nl||p.product_name||'').trim();
+  if(!name||kcal==null||[n.proteins_100g,n.carbohydrates_100g,n.fat_100g].every(v=>v==null))return null;
+  const brand=(p.brands||'').split(',')[0].trim(),flat=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if(brand&&!flat(name).includes(flat(brand)))name+=` (${brand})`;
+  return{id:'off'+code,offId:code,name,kcal:Math.round(num(kcal)),eiwit:r1(num(n.proteins_100g)),koolhydraten:r1(num(n.carbohydrates_100g)),vet:r1(num(n.fat_100g)),source:'off',_type:'off'};
+}
+function savedOff(code){const c=state.custom.find(x=>x.offId===code);return c?{...c,_type:'custom'}:null;}
+// gelogd OFF-product bewaren als eigen product, zodat het daarna ook offline vindbaar is
+function keepOffProduct(it){
+  let c=state.custom.find(x=>x.offId===it.offId);
+  if(!c){c={id:it.id,offId:it.offId,name:it.name,kcal:it.kcal,eiwit:it.eiwit,koolhydraten:it.koolhydraten,vet:it.vet,source:'off',_type:'custom'};state.custom.push(c);customFuse=null;}
+  return c;
+}
+// OFF hapert geregeld (blokkeert dan kort): daarom een paar keer opnieuw proberen
+async function offGet(url,tries,onRetry){
+  for(let i=0;i<tries;i++){
+    if(navigator.onLine===false)throw new Error('offline');
+    try{const r=await fetch(url);if(r.ok||r.status===404)return await r.json();}catch(e){}
+    if(i<tries-1){onRetry?.();await sleep(4000);}
+  }
+  throw new Error(navigator.onLine===false?'offline':'busy');
+}
+async function offLookup(q,onRetry){
+  q=q.trim();
+  if(/^\d{8,14}$/.test(q)){
+    const d=await offGet(`https://world.openfoodfacts.org/api/v2/product/${q}?fields=${OFF_FIELDS}`,3,onRetry),it=d.status===1?offToItem(d.product):null;
+    return it?[it]:[];
+  }
+  const d=await offGet(`https://nl.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=24&fields=${OFF_FIELDS}`,5,onRetry);
+  return (d.products||[]).map(offToItem).filter(Boolean).slice(0,8);
+}
+function offErrorText(e){
+  return e?.message==='offline'?'Geen internet. Je kunt nu alleen in je eigen producten en NEVO zoeken.'
+    :'Open Food Facts reageert nu niet. Probeer het over een halve minuut opnieuw, of scan de barcode.';
+}
+// renderPending bouwt alles opnieuw op; behoud de cursor als je net in een veld bezig bent
+function rerenderPending(){
+  const a=document.activeElement,id=a&&$('pending-items').contains(a)?a.id:'',pos=id?a.selectionStart:null;
+  renderPending();
+  const e=id?$(id):null;if(e){e.focus();try{e.setSelectionRange(pos,pos);}catch(x){}}
+}
+async function offSearch(pi){
+  const p=pending[pi];if(!p||p.off?.busy||!['matches','search'].includes(p.mode))return;
+  const key=p.mode==='search'?'searchResults':'matches',q=(p.mode==='search'?p.searchQuery??p.query:p.query).trim();
+  if(!q)return;
+  const run=p.off={busy:true,msg:'Zoeken in Open Food Facts…'};rerenderPending();
+  let found,err;
+  try{found=await offLookup(q,()=>{if(p.off===run){run.msg='Open Food Facts reageert traag, ik probeer het opnieuw…';rerenderPending();}});}catch(e){err=e;}
+  if(p.off!==run||!pending.includes(p))return;
+  if(err)p.off={err:true,msg:offErrorText(err)};
+  else{
+    const cur=p[key]||(p[key]=[]),have=new Set(cur.map(productKey));
+    const add=found.map(it=>savedOff(it.offId)||it).filter(it=>!have.has(productKey(it)));
+    cur.push(...add);
+    if(add.length&&!(p.selIdx>=0))p.selIdx=cur.length-add.length;
+    p.off={msg:add.length?`${add.length} ${add.length>1?'producten':'product'} uit Open Food Facts toegevoegd aan de lijst.`:found.length?'Open Food Facts gaf geen nieuwe producten.':'Niets gevonden in Open Food Facts.'};
+  }
+  rerenderPending();
+}
+function offRowHtml(pi){
+  const o=pending[pi].off;
+  return `<div class="off-row"><button class="btn-outline btn-sm" onclick="offSearch(${pi})"${o?.busy?' disabled':''}>Zoek in Open Food Facts</button>
+    <button class="btn-outline btn-sm" onclick="openScan(${pi})">Scan barcode</button></div>
+    ${o?`<div class="off-status${o.err?' err':''}">${o.busy?'<span class="off-spin"></span>':''}<span>${esc(o.msg)}</span></div>`:''}`;
+}
+
+// ── Barcodescanner ──
+function scanMsg(t,err){const m=$('scan-msg');m.textContent=t;m.classList.toggle('err',!!err);}
+async function getDetector(){
+  const fm=['ean_13','ean_8','upc_a','upc_e'];
+  if('BarcodeDetector' in window){
+    try{const s=await BarcodeDetector.getSupportedFormats();if(s.includes('ean_13'))return new BarcodeDetector({formats:fm.filter(f=>s.includes(f))});}catch(e){}
+  }
+  return new (await import(OFF_SCANNER)).BarcodeDetector({formats:fm});
+}
+async function openScan(pi){
+  const me=scan={pi};$('scan-code').value='';scanMsg('Camera starten…');
+  $('scan-screen').classList.remove('hidden');document.body.style.overflow='hidden';
+  try{
+    if(!navigator.mediaDevices?.getUserMedia)throw new Error('nocam');
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    if(scan!==me){stream.getTracks().forEach(t=>t.stop());return;}
+    me.stream=stream;const v=$('scan-video');v.srcObject=stream;await v.play().catch(()=>{});
+    scanMsg('Scanner laden…');
+    const det=await getDetector(),cv=document.createElement('canvas'),ctx=cv.getContext('2d',{willReadFrequently:true});
+    if(scan===me)scanMsg('Richt de camera op de barcode');
+    while(scan===me){
+      if(v.readyState>=2&&v.videoWidth){
+        const k=Math.min(1,1280/v.videoWidth);cv.width=Math.round(v.videoWidth*k);cv.height=Math.round(v.videoHeight*k);ctx.drawImage(v,0,0,cv.width,cv.height);
+        try{const code=(await det.detect(cv)).map(x=>x.rawValue).find(x=>/^\d{8,14}$/.test(x));if(code&&scan===me)return scanFound(code);}catch(e){}
+      }
+      await sleep(250);
+    }
+  }catch(e){
+    if(scan===me)scanMsg(e?.name==='NotAllowedError'?'Geen toegang tot de camera. Sta de camera toe voor deze site, of typ de cijfers hieronder.':'Camera of scanner niet beschikbaar. Typ de cijfers onder de barcode.',true);
+  }
+}
+function closeScan(){
+  scan?.stream?.getTracks().forEach(t=>t.stop());scan=null;
+  $('scan-video').srcObject=null;$('scan-screen').classList.add('hidden');document.body.style.overflow='';
+}
+function scanManual(){
+  const code=$('scan-code').value.replace(/\D/g,'');
+  if(!/^\d{8,14}$/.test(code))return scanMsg('Een barcode heeft 8 tot 14 cijfers.',true);
+  scanFound(code);
+}
+function scanFound(code){const pi=scan?scan.pi:null;closeScan();return scanLookup(code,pi);}
+async function scanLookup(code,pi){
+  const p=pi!=null?pending[pi]:null;
+  let item=savedOff(code);
+  if(!item){
+    toast(`Barcode ${code} opzoeken…`);
+    try{item=(await offLookup(code))[0];}catch(e){return toast(e?.message==='offline'?'Geen internet: barcode opzoeken lukt nu niet.':'Open Food Facts reageert nu niet. Probeer het zo opnieuw.');}
+  }
+  if(!item)return toast(`Barcode ${code} staat niet met voedingswaarden in Open Food Facts. Voeg het product toe via "Handmatig".`);
+  if(p&&pending.includes(p))Object.assign(p,{mode:'matches',matches:[item],selIdx:0,off:null});
+  else pending.push({query:item.name,grams:state.freq[productKey(item)]?.lastGrams||100,auto:true,mode:'matches',matches:[item],selIdx:0});
+  renderPending();toast(`${item.name} gevonden ✓`);
+  $('pending-section').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 function macroOf(item,key,raw){return item[raw]!==undefined?num(item[raw]):(item[key]||0);}
@@ -984,9 +1138,9 @@ function readProductForm(p){
   state.custom.push(c);customFuse=null;return c;
 }
 function matchCardHtml(item,onclick,sel){
-  const c=item._type==='custom';
+  const o=!!item.offId,c=item._type==='custom'||o;
   return `<div class="match-card${c?' custom':''}${sel?' sel':''}" onclick="${onclick}">
-    <div><div class="match-name">${isFavProduct(item)?'<span class="star-mini">★</span>':''}${esc(itemName(item))}${c?'<span class="badge">Eigen</span>':''}</div>
+    <div><div class="match-name">${isFavProduct(item)?'<span class="star-mini">★</span>':''}${esc(itemName(item))}${o?'<span class="badge off">Open Food Facts</span>':c?'<span class="badge">Eigen</span>':''}</div>
     ${!c&&item.Synoniem?`<div class="sub">${esc(item.Synoniem.slice(0,70))}</div>`:''}
     <div class="sub">${num(item.kcal)} kcal · V ${macroOf(item,'vet','Vet (g)')}g · KH ${macroOf(item,'koolhydraten','Koolhydraten (g)')}g · E ${macroOf(item,'eiwit','Eiwit (g)')}g per 100g</div></div>
     <span class="match-check">✓</span></div>`;
@@ -1044,8 +1198,8 @@ function renderPending(){
       <button class="btn-ghost btn-sm" onclick="switchMode(${pi},'matches')">Iets anders</button></div>`;
     else if(p.mode==='search')inner=renderSearchPanel(p,pi);
     else inner=(p.matches.length?p.matches.map((r,mi)=>matchCardHtml(r,`selectMatch(${pi},${mi})`,p.selIdx===mi)).join(''):'<div class="empty">Geen resultaten.</div>')
-      +portionRowHtml(pi,pendingProduct(p))
-      +`<div class="not-found-row">Staat er niet tussen?<button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Zoek / voeg toe</button></div>`;
+      +portionRowHtml(pi,pendingProduct(p))+offRowHtml(pi)
+      +`<div class="not-found-row">Staat er niet tussen?<button class="btn-ghost btn-sm" onclick="switchMode(${pi},'search')">Anders zoeken / zelf toevoegen</button></div>`;
     return `<div class="pend-item"><div class="pend-label">Jij typte: <strong>${esc(p.query)}</strong>
       <span class="grams-field"><input class="grams-inp" id="pg-${pi}" type="number" min="1" value="${p.grams}" oninput="updPG(${pi},this.value)"><span class="grams-unit">g</span></span></div>${inner}</div>`;
   }).join('<div class="divider"></div>');
@@ -1053,28 +1207,28 @@ function renderPending(){
 function renderSearchPanel(p,pi){
   const manual=p.searchSource==='manual',q=p.searchQuery??p.query,res=p.searchResults||[];
   const content=manual?productFormHtml(`p${pi}-`,'Voeg eigen product toe',`addManualProduct(${pi})`,'Opslaan & gebruiken')
-    :`<input class="search-input" id="si-${pi}" type="text" placeholder="Zoek in NEVO…" value="${esc(q)}" oninput="doNevoSearch(${pi},this.value)">
-      ${!res.length&&q?'<div class="empty">Niets gevonden. Voeg zelf toe via "Handmatig".</div>':res.map((r,mi)=>matchCardHtml(r,`selectMatch(${pi},${mi})`,p.selIdx===mi)).join('')}
-      ${portionRowHtml(pi,pendingProduct(p))}`;
-  return `<div class="search-tabs"><button class="search-tab${manual?'':' active'}" onclick="setSearchSrc(${pi},'nevo')">NEVO</button>
+    :`<input class="search-input" id="si-${pi}" type="text" enterkeyhint="search" placeholder="Zoek een product…" value="${esc(q)}" oninput="doNevoSearch(${pi},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();offSearch(${pi})}">
+      ${!res.length&&q?'<div class="empty">Niets gevonden in je eigen producten en NEVO. Zoek in Open Food Facts of voeg zelf toe via "Handmatig".</div>':res.map((r,mi)=>matchCardHtml(r,`selectMatch(${pi},${mi})`,p.selIdx===mi)).join('')}
+      ${portionRowHtml(pi,pendingProduct(p))}${offRowHtml(pi)}`;
+  return `<div class="search-tabs"><button class="search-tab${manual?'':' active'}" onclick="setSearchSrc(${pi},'nevo')">Zoeken</button>
     <button class="search-tab${manual?' active':''}" onclick="setSearchSrc(${pi},'manual')">Handmatig</button></div>${content}
     <button class="btn-ghost btn-sm" style="margin-top:8px" onclick="switchMode(${pi},'matches')">← Terug</button>`;
 }
 function switchMode(pi,mode){
-  const p=pending[pi];p.mode=mode;
+  const p=pending[pi];p.mode=mode;p.off=null;
   if(mode==='matches'&&!p.matches)p.matches=searchAll(p.query);
   if(mode==='search')setSearchSrc(pi,'nevo',p.query);
   else{p.selIdx=0;renderPending();}
   if(mode==='search')setTimeout(()=>$(`si-${pi}`)?.select(),50);
 }
 function setSearchSrc(pi,src,q){
-  const p=pending[pi];p.searchSource=src;p.selIdx=-1;
+  const p=pending[pi];p.searchSource=src;p.selIdx=-1;p.off=null;
   if(q!==undefined)p.searchQuery=q;
   if(src==='nevo')p.searchResults=searchAll(p.searchQuery??p.query,8);
   renderPending();
 }
 function doNevoSearch(pi,val){
-  const p=pending[pi];p.searchQuery=val;p.searchResults=val.trim()?searchAll(val,8):[];p.selIdx=-1;
+  const p=pending[pi];p.searchQuery=val;p.searchResults=val.trim()?searchAll(val,8):[];p.selIdx=-1;p.off=null;
   renderPending();const e=$(`si-${pi}`);e.focus();e.setSelectionRange(val.length,val.length);
 }
 function selectMatch(pi,mi){pending[pi].selIdx=mi;renderPending();}
@@ -1126,12 +1280,16 @@ function addManualProduct(pi){
   Object.assign(pending[pi],{mode:'matches',matches:[c],selIdx:0});save();renderPending();toast(`'${c.name}' opgeslagen ✓`);
 }
 function handleAdd(){
-  const inp=$('food-input'),parsed=parseInput(inp.value);
+  const inp=$('food-input'),code=inp.value.trim();
+  if(/^\d{8,14}$/.test(code)){inp.value='';inp.style.height='';return scanLookup(code,null);}
+  const parsed=parseInput(inp.value);
   if(!inp.value.trim())return;
   if(!parsed.length)return toast('Geen hoeveelheid herkend. Bijv: 35g havermout of 1 ei');
   pending=parsed.map(p=>p.needsUnit?{...p,mode:'unit-ask',unitKey:p.needsUnit}:newPending(p));
   inp.value='';inp.style.height='';renderPending();
   $('pending-section').scrollIntoView({behavior:'smooth',block:'nearest'});
+  const empty=pending.filter(p=>p.mode==='matches'&&!p.matches.length);
+  (async()=>{for(const p of empty){const i=pending.indexOf(p);if(i>=0)await offSearch(i);}})();
 }
 function confirmAll(){
   if(pending.some(p=>p.mode==='unit-ask'))return toast('Beantwoord eerst hoeveel gram 1 stuk/eenheid is');
@@ -1142,7 +1300,8 @@ function confirmAll(){
       if(recipeServings(r)!==p.servings){r.servings=p.servings;r.updated=Date.now();}
       log.push(calcRecipeEntry(r,a,activeMeal));r.last=a;added++;return;
     }
-    const item=pendingProduct(p);
+    let item=pendingProduct(p);
+    if(item?._type==='off')item=keepOffProduct(item);
     if(item){log.push(calcMacros(item,p.grams,activeMeal));state.memory[mk(p.query)]=item;bumpFreq(item,p.grams);added++;}
   });
   pending=[];save();render();renderPending();
