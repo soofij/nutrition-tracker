@@ -98,6 +98,10 @@
     .grams-unit{font-size:12px;color:var(--muted)}
     .portion-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted)}
     .link{color:var(--accent);font-size:12px;padding:2px 0}
+    .pstep{display:inline-flex;align-items:center;background:#fff;border:1.5px solid var(--accent);border-radius:8px;overflow:hidden}
+    .pstep-btn{width:38px;height:34px;font-size:19px;line-height:1;font-weight:600;color:var(--accent)}
+    .pstep-btn:active{background:var(--surface)}
+    .pstep .grams-inp{width:42px;text-align:center;font-size:14px}
     .mem-card{border:1.5px solid var(--accent-soft);border-radius:var(--r);padding:12px 14px;background:var(--accent-bg);
       display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
     .mem-name{font-size:14px;font-weight:600}
@@ -614,7 +618,7 @@ function parseInput(text){
   }
   const re=/([0-9]+(?:[.,][0-9]+)?)\s*(?:gram?|gr\b|ml\b|g\b)?/gi,qs=[];let m;
   while((m=re.exec(text))!==null)qs.push({start:m.index,end:m.index+m[0].length,grams:num(m[1])});
-  if(!qs.length)return text?[{query:text,grams:defaultGramsFor(text)}]:[];
+  if(!qs.length)return text?[{query:text,grams:defaultGramsFor(text),auto:true}]:[];
   const nameFirst=text.slice(0,qs[0].start).trim().length>0;
   return qs.map((q,i)=>{
     const part=nameFirst?text.slice(i?qs[i-1].end:0,q.start):text.slice(q.end,i<qs.length-1?qs[i+1].start:text.length);
@@ -996,14 +1000,31 @@ function pendingProduct(p){
 }
 function portionRowHtml(pi,product){
   if(!product)return '';
-  const p=portionFor(product);
-  return `<div class="portion-row">${p?`1 ${esc(p.label)} = ${p.grams}g
-    <span class="grams-field"><input class="grams-inp" type="number" min="0" step="0.5" placeholder="aantal" oninput="updPortionQty(${pi},this.value)"><span class="grams-unit">× ${esc(p.label)}</span></span>
-    <button class="link" onclick="openPortionModal(pendingProduct(pending[${pi}]))">✎ wijzig portie</button>`
-    :`<button class="link" onclick="openPortionModal(pendingProduct(pending[${pi}]))">+ Vaste portie instellen</button>`}</div>`;
+  const p=portionFor(product),edit=`onclick="openPortionModal(pendingProduct(pending[${pi}]))"`;
+  if(!p)return `<div class="portion-row"><button class="link" ${edit}>+ Vaste portie instellen</button></div>`;
+  return `<div class="portion-row"><span class="pstep"><button class="pstep-btn" onclick="stepPortion(${pi},-1)" aria-label="Eén minder">−</button>
+    <input class="grams-inp" id="pq-${pi}" type="number" min="0" step="0.5" inputmode="decimal" value="${portionQty(pending[pi].grams,p)}" oninput="updPortionQty(${pi},this.value)">
+    <button class="pstep-btn" onclick="stepPortion(${pi},1)" aria-label="Eén meer">+</button></span>
+    <span>× ${esc(p.label)} (${p.grams}g)</span>
+    <button class="link" ${edit}>✎ wijzig portie</button></div>`;
+}
+function portionQty(grams,p){return Math.round(grams/p.grams*100)/100;}
+// geen hoeveelheid getypt: standaard 1 vaste portie als het gekozen product die heeft, anders de gewone standaard
+function applyAutoPortion(p){
+  if(!p.auto||p.mode==='recipe-portion'||p.mode==='unit-ask')return;
+  p.autoGrams??=p.grams;
+  const po=portionFor(pendingProduct(p));
+  p.grams=po?po.grams:p.autoGrams;
+}
+function stepPortion(pi,d){
+  const p=pending[pi],po=portionFor(pendingProduct(p));if(!po)return;
+  const q=p.grams/po.grams;let n=d>0?Math.floor(q+1e-9)+1:Math.ceil(q-1e-9)-1;
+  if(n<1)n=0.5;
+  $(`pq-${pi}`).value=n;updPortionQty(pi,n);
 }
 function renderPending(){
   $('pending-section').classList.toggle('hidden',!pending.length);
+  pending.forEach(applyAutoPortion);
   $('pending-items').innerHTML=pending.map((p,pi)=>{
     if(p.mode==='recipe-portion'){
       const g=p.unit==='g',w=recipeWeight(p.recipe);
@@ -1091,7 +1112,9 @@ function updPG(pi,val){
     if(p.unit==='g')p.grams=v;else{p.portion=v;const u=$(`rpu-${pi}`);if(u)u.textContent=v<=1?'portie':'porties';}
     $(`psub-${pi}`).textContent=recipePendSub(p);return;
   }
-  p.grams=v;
+  p.grams=v;p.auto=false;
+  const po=portionFor(pendingProduct(p)),pq=$(`pq-${pi}`);
+  if(po&&pq&&document.activeElement!==pq)pq.value=portionQty(v,po);
   if(p.mode==='memory')$(`psub-${pi}`).textContent=`${v}g · ${macroText(calcMacros(p.memory,v))}`;
 }
 function updPortionQty(pi,val){
